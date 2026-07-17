@@ -238,6 +238,7 @@ export default function EditProfilPage() {
             <div>
               <label className="block text-sm font-medium mb-2">Adresse</label>
               <input type="text" value={adresse} onChange={e=>setAdresse(e.target.value)} className="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Rue, Ville, Code postal" required />
+            </div>
             <div>
               <label className="block text-sm font-medium mb-2">Présentation / Profil recherché</label>
               <textarea value={presentation} onChange={e=>setPresentation(e.target.value)} rows={4} className="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Décrivez votre salon..." />
