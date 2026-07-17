@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { ArrowLeft, User, Heart, X, Star } from 'lucide-react';
+import { ArrowLeft, User, Heart, X, Star, ShieldCheck, ShieldOff } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 
@@ -12,6 +12,8 @@ export default function AdminProfilPage() {
   const role = searchParams.get('role');
 
   const [details, setDetails] = useState<any>(null);
+  const [isApproved, setIsApproved] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [swipesDonnes, setSwipesDonnes] = useState<any[]>([]);
   const [swipesRecus, setSwipesRecus] = useState<any[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
@@ -23,6 +25,9 @@ export default function AdminProfilPage() {
       const table = role === 'patron' ? 'patrons_details' : 'apprentis_details';
       const { data: detailData } = await supabase.from(table).select('*').eq('profile_id', profileId).single();
       if (detailData) setDetails(detailData);
+
+      const { data: profile } = await supabase.from('profiles').select('is_approved').eq('id', profileId).single();
+      if (profile) setIsApproved(!!profile.is_approved);
 
       // 2. Fetch swipes donnés (où de_profile_id = profileId)
       const { data: donn } = await supabase.from('swipes').select('*').eq('de_profile_id', profileId);
@@ -50,6 +55,14 @@ export default function AdminProfilPage() {
     };
     fetchProfile();
   }, [profileId, role]);
+
+  const toggleApproval = async () => {
+    setUpdating(true);
+    const next = !isApproved;
+    const { error } = await supabase.from('profiles').update({ is_approved: next }).eq('id', profileId);
+    if (!error) setIsApproved(next);
+    setUpdating(false);
+  };
 
   const renderSwipeIcon = (type: string) => {
     if (type === 'like') return <Heart size={16} className="text-green-500" />;
@@ -80,6 +93,25 @@ export default function AdminProfilPage() {
                   {role === 'patron' ? details.nom_entreprise : `${details.prenom} ${details.nom}`}
                 </h1>
                 <p className="text-[#D4AF37] font-medium capitalize mt-1">{details.domaine}</p>
+                <span className={`inline-block mt-3 text-xs font-bold px-2 py-1 border rounded-md ${
+                  isApproved
+                    ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
+                    : 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+                }`}>
+                  {isApproved ? 'Validé' : 'En attente'}
+                </span>
+                <button
+                  onClick={toggleApproval}
+                  disabled={updating}
+                  className={`mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold transition-colors disabled:opacity-60 ${
+                    isApproved
+                      ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                      : 'bg-[#D4AF37] text-white hover:bg-[#B8962E]'
+                  }`}
+                >
+                  {isApproved ? <ShieldOff size={18} /> : <ShieldCheck size={18} />}
+                  {updating ? 'Mise à jour...' : isApproved ? 'Révoquer la validation' : 'Valider le profil'}
+                </button>
                 <div className="mt-6 text-left text-sm space-y-3 bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
                   <p className="text-zinc-500 border-b border-zinc-200 dark:border-zinc-800 pb-2">Distance max : {details.distance_max || '?'} km</p>
                   {role === 'apprenti' && (
@@ -92,6 +124,13 @@ export default function AdminProfilPage() {
                       <p><strong className="text-zinc-900 dark:text-zinc-100">Exp. Apprentissage :</strong> {details.experience_apprentissage || '-'}</p>
                       <p><strong className="text-zinc-900 dark:text-zinc-100">Autre Exp. :</strong> {details.autre_experience || '-'}</p>
                       <p><strong className="text-zinc-900 dark:text-zinc-100">Motivation :</strong> {details.motivation || '-'}</p>
+                    </>
+                  )}
+                  {role === 'patron' && (
+                    <>
+                      <p><strong className="text-zinc-900 dark:text-zinc-100">Adresse :</strong> {details.adresse || '-'}</p>
+                      <p><strong className="text-zinc-900 dark:text-zinc-100">Présentation :</strong> {details.presentation || '-'}</p>
+                      <p><strong className="text-zinc-900 dark:text-zinc-100">Diplôme recherché :</strong> {details.diplome_recherche || '-'}</p>
                     </>
                   )}
                 </div>

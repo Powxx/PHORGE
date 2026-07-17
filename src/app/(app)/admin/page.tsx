@@ -16,6 +16,9 @@ export default function AdminDashboard() {
     const { data: appData } = await supabase.from('apprentis_details').select('*');
     const { data: patData } = await supabase.from('patrons_details').select('*');
     const { data: matches } = await supabase.from('matches').select('*');
+    const { data: profiles } = await supabase.from('profiles').select('id, is_approved').in('role', ['apprenti', 'patron']);
+    const approvalMap: Record<string, boolean> = {};
+    profiles?.forEach(p => { approvalMap[p.id] = !!p.is_approved; });
 
     const nameMap: Record<string, string> = {};
     if (appData) {
@@ -23,7 +26,7 @@ export default function AdminDashboard() {
     }
     if (patData) {
       patData.forEach(p => nameMap[p.profile_id] = p.nom_entreprise);
-      setPatrons(patData);
+      setPatrons(patData.map(p => ({ ...p, is_approved: approvalMap[p.profile_id] ?? false })));
     }
 
     if (appData && matches) {
@@ -46,7 +49,7 @@ export default function AdminDashboard() {
           color = 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400'; 
         }
 
-        return { ...app, currentStatus: status, statusColor: color };
+        return { ...app, currentStatus: status, statusColor: color, is_approved: approvalMap[app.profile_id] ?? false };
       });
       setApprentis(enriched);
 
@@ -158,6 +161,13 @@ export default function AdminDashboard() {
                     <p className="text-sm text-zinc-500 capitalize">{a.domaine}</p>
                   </div>
                   <div className="flex items-center gap-3">
+                    <span className={`text-xs font-bold px-2 py-1 border rounded-md ${
+                      a.is_approved
+                        ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
+                        : 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+                    }`}>
+                      {a.is_approved ? 'Validé' : 'En attente'}
+                    </span>
                     <span className={`text-xs font-bold px-2 py-1 border rounded-md ${a.statusColor}`}>
                       {a.currentStatus}
                     </span>
@@ -182,7 +192,16 @@ export default function AdminDashboard() {
                     <p className="font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-[#D4AF37] transition-colors">{p.nom_entreprise}</p>
                     <p className="text-sm text-zinc-500 capitalize">{p.domaine}</p>
                   </div>
-                  <ChevronRight size={20} className="text-zinc-400" />
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs font-bold px-2 py-1 border rounded-md ${
+                      p.is_approved
+                        ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
+                        : 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+                    }`}>
+                      {p.is_approved ? 'Validé' : 'En attente'}
+                    </span>
+                    <ChevronRight size={20} className="text-zinc-400" />
+                  </div>
                 </Link>
               ))}
             </div>

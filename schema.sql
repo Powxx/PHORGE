@@ -123,12 +123,39 @@ CREATE POLICY "Users can update own patrons details" ON patrons_details FOR UPDA
 CREATE POLICY "Users can insert own patrons details" ON patrons_details FOR INSERT WITH CHECK (auth.uid() = profile_id);
 
 -- SWIPES
-CREATE POLICY "Users can insert own swipes" ON swipes FOR INSERT WITH CHECK (auth.uid() = de_profile_id);
+CREATE POLICY "Approved users can insert own swipes" ON swipes FOR INSERT WITH CHECK (
+  auth.uid() = de_profile_id
+  AND EXISTS (
+    SELECT 1 FROM profiles
+    WHERE profiles.id = auth.uid() AND profiles.is_approved = true
+  )
+);
 CREATE POLICY "Users and admin can view swipes" ON swipes FOR SELECT USING (
   auth.uid() = de_profile_id OR 
   auth.uid() = vers_profile_id OR 
   EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin_cfa')
 );
+
+-- Empêche un utilisateur de s'auto-valider
+CREATE OR REPLACE FUNCTION prevent_self_approve()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.is_approved IS DISTINCT FROM OLD.is_approved THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin_cfa'
+    ) THEN
+      RAISE EXCEPTION 'Seul un admin CFA peut modifier is_approved';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_prevent_self_approve ON profiles;
+CREATE TRIGGER trg_prevent_self_approve
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_self_approve();
 
 -- MATCHES
 CREATE POLICY "Participants can view their matches" ON matches FOR SELECT USING (
