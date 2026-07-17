@@ -3,13 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { ArrowLeft, User, Heart, X, Star } from 'lucide-react';
 import Link from 'next/link';
+import { useParams, useSearchParams } from 'next/navigation';
 
-export default function AdminProfilPage({ params, searchParams }: any) {
-  // Use React.use to unwrap promises in Next 15 if needed
-  const resolvedParams = React.use(params);
-  const resolvedSearchParams = React.use(searchParams);
-  const profileId = resolvedParams.id;
-  const role = resolvedSearchParams.role;
+export default function AdminProfilPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const profileId = params.id as string;
+  const role = searchParams.get('role');
 
   const [details, setDetails] = useState<any>(null);
   const [swipesDonnes, setSwipesDonnes] = useState<any[]>([]);
