@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase/client';
 import { User, LogOut, FileText, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ProfileMap from '@/components/ProfileMap';
 
 export default function ProfilPage() {
   const [profileData, setProfileData] = useState<any>(null);
@@ -83,12 +84,22 @@ export default function ProfilPage() {
             {role === 'patron' && (
               <>
                 <p className="flex flex-col sm:flex-row sm:gap-4"><span className="text-zinc-500 w-32 shrink-0">Adresse</span> <strong className="break-words">{profileData?.adresse || 'Non renseignée'}</strong></p>
+                <p className="flex flex-col sm:flex-row sm:gap-4"><span className="text-zinc-500 w-32 shrink-0">Distance Max</span> <strong className="break-words">{profileData?.distance_max} km</strong></p>
               </>
             )}
             {role === 'admin_cfa' && (
               <p className="text-zinc-500 text-sm italic">Vous avez tous les droits sur la plateforme. Accédez à la Control Tower pour superviser les mises en relation.</p>
             )}
           </div>
+
+          {profileData && role !== 'admin_cfa' && profileData.latitude && profileData.longitude && (
+            <ProfileMap 
+              latitude={profileData.latitude} 
+              longitude={profileData.longitude} 
+              radius={profileData.distance_max || 50} 
+              adresse={profileData.adresse}
+            />
+          )}
           
           <Link href="/profil/edit" className="w-full mt-8 py-4 bg-zinc-100 dark:bg-zinc-800 rounded-xl font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
             <Settings size={20} /> Modifier mes informations
