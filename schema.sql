@@ -111,6 +111,7 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id OR EXISTS (SELECT 1 FROM profiles AS p WHERE p.id = auth.uid() AND p.role = 'admin_cfa'));
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Admin can delete profiles" ON profiles FOR DELETE USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin_cfa'));
 
 -- APPRENTIS DETAILS
 CREATE POLICY "Public apprentis are viewable by everyone" ON apprentis_details FOR SELECT USING (true);
@@ -236,5 +237,11 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'photos'
-  AND (storage.foldername(name))[1] = auth.uid()::text
+  AND (
+    (storage.foldername(name))[1] = auth.uid()::text
+    OR EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'admin_cfa'
+    )
+  )
 );
