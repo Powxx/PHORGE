@@ -22,20 +22,20 @@ export default function OnboardingFlow() {
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [age, setAge] = useState('');
-  
+
   const [diplomeSouhaite, setDiplomeSouhaite] = useState('');
   const [diplomeAcquis, setDiplomeAcquis] = useState('');
-  
+
   const [stage, setStage] = useState('');
   const [expApprentissage, setExpApprentissage] = useState('');
   const [expAutre, setExpAutre] = useState('');
   const [xp, setXp] = useState(''); // legacy
-  
+
   const [moyenTransport, setMoyenTransport] = useState('');
   const [motivation, setMotivation] = useState('');
 
   // Common State
-  const [distance, setDistance] = useState(50);
+  const [distance, setDistance] = useState(10);
   const [latitude, setLatitude] = useState(44.1272); // Alès default
   const [longitude, setLongitude] = useState(4.0833);
   const [isLocating, setIsLocating] = useState(false);
@@ -65,7 +65,7 @@ export default function OnboardingFlow() {
           const lon = position.coords.longitude;
           setLatitude(lat);
           setLongitude(lon);
-          
+
           // Reverse geocoding
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
@@ -294,7 +294,7 @@ export default function OnboardingFlow() {
   return (
     <div className="max-w-md mx-auto min-h-screen flex flex-col p-6 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       <div className="flex items-center gap-2 mb-8 mt-4">
-        {Array.from({length: totalSteps}).map((_, i) => (
+        {Array.from({ length: totalSteps }).map((_, i) => (
           <div key={i} className={`h-2 flex-1 rounded-full transition-colors ${step > i ? 'bg-[#D4AF37]' : 'bg-zinc-200 dark:bg-zinc-800'}`} />
         ))}
       </div>
@@ -304,7 +304,7 @@ export default function OnboardingFlow() {
           <div className="flex-1 flex flex-col items-center justify-center">
             <h1 className="text-3xl font-bold mb-2">Votre photo professionnelle</h1>
             <p className="text-zinc-500 mb-8 text-center">Montrez-vous sous votre meilleur jour.</p>
-            
+
             <label className="w-48 h-48 rounded-full border-4 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center text-zinc-400 cursor-pointer hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors bg-zinc-50 dark:bg-zinc-900 overflow-hidden relative">
               {photoUrl ? (
                 <img src={photoUrl} alt="Profil" className="w-full h-full object-cover" />
@@ -393,7 +393,7 @@ export default function OnboardingFlow() {
         {step === 6 && (
           <div className="flex-1 flex flex-col justify-center space-y-4 overflow-y-auto pb-4">
             <h1 className="text-3xl font-bold mb-2">Ma mobilité</h1>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Je peux me déplacer (Moyen de transport)</label>
               <input type="text" value={moyenTransport} onChange={e => setMoyenTransport(e.target.value)} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Ex: Bus, Scooter, Voiture..." />
@@ -437,9 +437,9 @@ export default function OnboardingFlow() {
             Retour
           </button>
         )}
-        
+
         {(step === 1 || step > 2) && (
-          <button 
+          <button
             onClick={() => step < totalSteps ? nextStep() : handleSave()}
             disabled={saving}
             className="flex-1 py-4 rounded-xl bg-[#D4AF37] text-white font-bold text-lg hover:bg-[#B8962E] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#D4AF37]/20 disabled:opacity-50"
