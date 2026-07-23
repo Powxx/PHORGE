@@ -44,8 +44,14 @@ export default function OnboardingFlow() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) setUserId(data.user.id);
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data?.user) {
+        setUserId(data.user.id);
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+        if (profile?.role === 'admin_cfa') {
+          router.push('/admin');
+        }
+      }
       else router.push('/login');
     });
   }, [router]);
@@ -214,11 +220,6 @@ export default function OnboardingFlow() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Adresse de l'entreprise</label>
-              <input type="text" value={adresse} onChange={e => setAdresse(e.target.value)} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Rue, Ville, Code postal" />
-            </div>
-
-            <div>
               <label className="block text-sm font-medium mb-2">Présentation / Profil recherché</label>
               <textarea value={presentation} onChange={e => setPresentation(e.target.value)} rows={4} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Décrivez votre salon et l'apprenti idéal..." />
             </div>
@@ -252,12 +253,18 @@ export default function OnboardingFlow() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-4">
-              <label className="block text-sm font-medium mb-2">Localisation GPS</label>
-              <button onClick={handleLocate} className="w-full flex items-center justify-center gap-2 p-3 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-bold rounded-xl hover:bg-blue-100 transition-colors">
-                <LocateFixed size={18} /> {isLocating ? "Localisation..." : "Me localiser précisément"}
-              </button>
-              <p className="text-xs text-zinc-400 text-center mt-2">Par défaut: Alès (30100)</p>
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Adresse de l'entreprise</label>
+                <input type="text" value={adresse} onChange={e => setAdresse(e.target.value)} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Rue, Ville, Code postal" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Localisation GPS</label>
+                <button onClick={handleLocate} className="w-full flex items-center justify-center gap-2 p-3 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-bold rounded-xl hover:bg-blue-100 transition-colors">
+                  <LocateFixed size={18} /> {isLocating ? "Localisation..." : "Me localiser précisément"}
+                </button>
+                <p className="text-xs text-zinc-400 text-center mt-2">Par défaut: Alès (30100)</p>
+              </div>
             </div>
 
             <div className="pt-4">

@@ -40,6 +40,12 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
       else if (data.user) {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+        if (profile?.role === 'admin_cfa') {
+          window.location.href = '/admin';
+          return;
+        }
+
         const hasOnboarded = await checkOnboarding(data.user.id);
         if (hasOnboarded) {
           window.location.href = '/swipe';

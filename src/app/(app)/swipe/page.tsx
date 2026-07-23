@@ -43,7 +43,12 @@ export default function SwipePage() {
       const { data: profile } = await supabase.from('profiles').select('role, is_approved').eq('id', currentId).single();
       if (!profile) return;
 
-      if (profile.role !== 'admin_cfa' && !profile.is_approved) {
+      if (profile.role === 'admin_cfa') {
+        router.push('/admin');
+        return;
+      }
+
+      if (!profile.is_approved) {
         setIsApproved(false);
         setLoading(false);
         return;
