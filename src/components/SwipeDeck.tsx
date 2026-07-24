@@ -19,11 +19,11 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
   const [cards, setCards] = useState(profiles);
   const [selectedProfile, setSelectedProfile] = useState<ProfileCard | null>(null);
   const [matchData, setMatchData] = useState<{ id: string, nom: string } | null>(null);
-  
+
   const controls = useAnimation();
   const router = useRouter();
 
-  const handleSwipeAction = async (cardId: string, type: 'like' | 'dislike' | 'superlike') => {
+  const handleSwipeAction = async (cardId: string, type: 'like' | 'dislike') => {
     const swipedCard = cards.find(c => c.id === cardId);
     setCards(prev => prev.filter(c => c.id !== cardId));
     controls.set({ x: 0, opacity: 1 });
@@ -36,14 +36,14 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
       type: type
     });
 
-    if (type === 'like' || type === 'superlike') {
+    if (type === 'like') {
       const { data: matchCheck } = await supabase.from('swipes')
         .select('*')
         .eq('de_profile_id', cardId)
         .eq('vers_profile_id', currentUserId)
-        .in('type', ['like', 'superlike'])
+        .in('type', ['like'])
         .single();
-        
+
       if (matchCheck) {
         // IT'S A MATCH
         const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', currentUserId).single();
@@ -62,7 +62,7 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
             expediteur_id: currentUserId,
             texte: "Mise en relation établie. Vous pouvez maintenant échanger."
           });
-          
+
           setMatchData({ id: newMatch.id, nom: swipedCard?.nom || "Nouveau Match" });
         }
       }
@@ -86,11 +86,11 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
     <>
       <div className="relative w-full h-[600px] max-w-sm mx-auto flex items-center justify-center">
         {cards.length === 0 && <div className="text-zinc-500 dark:text-zinc-400 text-center font-medium">Plus aucun profil disponible dans votre domaine. Revenez plus tard !</div>}
-        
+
         {cards.map((card, index) => {
           const isFront = index === 0;
           if (index > 2) return null;
-          
+
           return (
             <motion.div
               key={card.id}
@@ -114,7 +114,7 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
                       <p className="text-lg opacity-90">{card.sousTitre}</p>
                       {card.description && <p className="text-sm opacity-80 mt-2 line-clamp-3 italic">"{card.description}"</p>}
                     </div>
-                    <button 
+                    <button
                       onClick={() => setSelectedProfile(card)}
                       className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors backdrop-blur-sm"
                     >
@@ -139,13 +139,6 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
                     }}>
                     <X size={28} />
                   </button>
-                  <button className="p-3 rounded-full bg-white dark:bg-zinc-800 shadow-lg text-blue-400 hover:scale-110 transition-transform"
-                    onClick={async () => {
-                      await controls.start({ y: -500, opacity: 0, transition: { duration: 0.2 } });
-                      handleSwipeAction(card.id, 'superlike');
-                    }}>
-                    <Star size={20} />
-                  </button>
                   <button className="p-4 rounded-full bg-white dark:bg-zinc-800 shadow-lg text-green-500 hover:scale-110 transition-transform"
                     onClick={async () => {
                       await controls.start({ x: 500, opacity: 0, transition: { duration: 0.2 } });
@@ -163,12 +156,12 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
       {/* Profile Details Modal */}
       <AnimatePresence>
         {selectedProfile && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setSelectedProfile(null)}
           >
-            <motion.div 
+            <motion.div
               initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
               className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
               onClick={e => e.stopPropagation()}
@@ -176,13 +169,13 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
               <div className="h-64 relative shrink-0">
                 <img src={selectedProfile.photo} className="w-full h-full object-cover" />
                 <button onClick={() => setSelectedProfile(null)} className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full">
-                  <X size={20} />
+                  <X size={15} />
                 </button>
               </div>
               <div className="p-6 overflow-y-auto flex-1">
                 <h2 className="text-3xl font-bold mb-1">{selectedProfile.nom}</h2>
                 <p className="text-[#D4AF37] font-medium text-lg mb-6">{selectedProfile.sousTitre}</p>
-                
+
                 <div className="space-y-4">
                   {selectedProfile.details && Object.entries(selectedProfile.details).map(([key, value]) => (
                     value && (
@@ -202,11 +195,11 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
       {/* Match Modal */}
       <AnimatePresence>
         {matchData && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }}
               className="bg-white dark:bg-zinc-900 p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl border border-[#D4AF37]/30"
             >
@@ -215,15 +208,15 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
               </div>
               <h2 className="text-3xl font-extrabold mb-2">Match !</h2>
               <p className="text-zinc-600 dark:text-zinc-400 mb-8">Vous et <span className="font-bold text-zinc-900 dark:text-zinc-100">{matchData.nom}</span> êtes intéressés.</p>
-              
+
               <div className="space-y-3">
-                <button 
+                <button
                   onClick={() => router.push(`/chat/${matchData.id}`)}
                   className="w-full py-4 rounded-xl bg-[#D4AF37] text-white font-bold flex items-center justify-center gap-2 hover:bg-[#B8962E] transition-colors"
                 >
                   <MessageCircle size={20} /> Lancer la discussion
                 </button>
-                <button 
+                <button
                   onClick={() => setMatchData(null)}
                   className="w-full py-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-800 font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                 >
