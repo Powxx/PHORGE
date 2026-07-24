@@ -169,7 +169,7 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
               <div className="h-64 relative shrink-0">
                 <img src={selectedProfile.photo} className="w-full h-full object-cover" />
                 <button onClick={() => setSelectedProfile(null)} className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full">
-                  <X size={15} />
+                  <X size={10} />
                 </button>
               </div>
               <div className="p-6 overflow-y-auto flex-1">
