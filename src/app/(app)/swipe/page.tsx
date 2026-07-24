@@ -7,20 +7,20 @@ import Link from 'next/link';
 import { Clock } from 'lucide-react';
 
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; 
-  const dLat = deg2rad(lat2-lat1);
-  const dLon = deg2rad(lon2-lon1); 
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2); 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  const d = R * c; 
+  const R = 6371;
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c;
   return d;
 }
 
 function deg2rad(deg: number) {
-  return deg * (Math.PI/180);
+  return deg * (Math.PI / 180);
 }
 
 export default function SwipePage() {
@@ -55,7 +55,7 @@ export default function SwipePage() {
       }
 
       let targetRole = profile.role === 'apprenti' ? 'patron' : 'apprenti';
-      
+
       let myDomaine = 'coiffure';
       let myLat = 44.1272; // Alès default
       let myLon = 4.0833;
@@ -89,7 +89,7 @@ export default function SwipePage() {
       const approvedIds = new Set((approvedRows || []).map(p => p.id));
 
       let results: (ProfileCard & { distance: number, candidateDistMax: number, originalDiplome?: string })[] = [];
-      
+
       if (targetRole === 'patron') {
         const { data } = await supabase.from('patrons_details').select('*').eq('domaine', myDomaine);
         if (data) {
@@ -137,16 +137,16 @@ export default function SwipePage() {
       // Remove swiped profiles and filter by MUTUAL distance + approval
       const { data: swipes } = await supabase.from('swipes').select('vers_profile_id').eq('de_profile_id', currentId);
       const swipedIds = swipes ? swipes.map(s => s.vers_profile_id) : [];
-      
-      const filtered = results.filter(p => 
+
+      const filtered = results.filter(p =>
         approvedIds.has(p.id) &&
-        !swipedIds.includes(p.id) && 
+        !swipedIds.includes(p.id) &&
         p.id !== currentId &&
-        p.distance <= myDistMax && 
+        p.distance <= myDistMax &&
         p.distance <= p.candidateDistMax &&
         (targetRole === 'patron' ? true : (myDiplomeRecherche === 'Tous les diplômes' || p.originalDiplome === myDiplomeRecherche))
       );
-      
+
       setProfiles(filtered);
       setLoading(false);
     };
@@ -156,10 +156,7 @@ export default function SwipePage() {
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 pt-10 flex flex-col">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-[#D4AF37]">Découverte</h1>
-        <p className="text-sm text-zinc-500">Trouvez votre prochain match</p>
-      </div>
+
       <div className="flex-1 flex items-center justify-center">
         {loading ? (
           <div className="text-zinc-500">Chargement des profils...</div>
