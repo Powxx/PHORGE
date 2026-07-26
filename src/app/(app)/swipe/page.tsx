@@ -155,7 +155,7 @@ export default function SwipePage() {
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 pt-10 flex flex-col">
+    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 pt-5 flex flex-col">
 
       <div className="flex-1 flex items-center justify-center">
         {loading ? (
