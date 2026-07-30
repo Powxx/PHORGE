@@ -1,26 +1,35 @@
--- Clean up existant (ATTENTION : Ceci supprime les données de ces tables lors de la ré-exécution)
-DROP TABLE IF EXISTS messages CASCADE;
-DROP TABLE IF EXISTS matches CASCADE;
-DROP TABLE IF EXISTS swipes CASCADE;
-DROP TABLE IF EXISTS patrons_details CASCADE;
-DROP TABLE IF EXISTS apprentis_details CASCADE;
-DROP TABLE IF EXISTS profiles CASCADE;
-DROP TYPE IF EXISTS swipe_type CASCADE;
-DROP TYPE IF EXISTS match_status CASCADE;
-DROP TYPE IF EXISTS user_role CASCADE;
+-- Clean up existant (ATTENTION : Commenté pour ne plus supprimer les données lors de la ré-exécution)
+-- DROP TABLE IF EXISTS messages CASCADE;
+-- DROP TABLE IF EXISTS matches CASCADE;
+-- DROP TABLE IF EXISTS swipes CASCADE;
+-- DROP TABLE IF EXISTS patrons_details CASCADE;
+-- DROP TABLE IF EXISTS apprentis_details CASCADE;
+-- DROP TABLE IF EXISTS profiles CASCADE;
+-- DROP TYPE IF EXISTS swipe_type CASCADE;
+-- DROP TYPE IF EXISTS match_status CASCADE;
+-- DROP TYPE IF EXISTS user_role CASCADE;
 
 -- Active l'extension pour les UUIDs si nécessaire (souvent par défaut)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Enumérations
-CREATE TYPE user_role AS ENUM ('apprenti', 'patron', 'admin_cfa');
-CREATE TYPE match_status AS ENUM ('actif', 'essai_demande', 'contrat_demande', 'archive');
-CREATE TYPE swipe_type AS ENUM ('like', 'dislike', 'superlike');
+-- Enumérations (Création sécurisée si elles n'existent pas déjà)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+    CREATE TYPE user_role AS ENUM ('apprenti', 'patron', 'admin_cfa');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'match_status') THEN
+    CREATE TYPE match_status AS ENUM ('actif', 'essai_demande', 'contrat_demande', 'archive');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'swipe_type') THEN
+    CREATE TYPE swipe_type AS ENUM ('like', 'dislike', 'superlike');
+  END IF;
+END $$;
 
 -- TABLES
 
 -- 1. Profils (Lié à auth.users)
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   role user_role NOT NULL,
@@ -29,7 +38,7 @@ CREATE TABLE profiles (
 );
 
 -- 2. Détails Apprentis
-CREATE TABLE apprentis_details (
+CREATE TABLE IF NOT EXISTS apprentis_details (
   profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
   nom TEXT NOT NULL,
   prenom TEXT NOT NULL,
@@ -54,7 +63,7 @@ CREATE TABLE apprentis_details (
 );
 
 -- 3. Détails Patrons (Salons / Instituts)
-CREATE TABLE patrons_details (
+CREATE TABLE IF NOT EXISTS patrons_details (
   profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE PRIMARY KEY,
   nom_entreprise TEXT NOT NULL,
   domaine TEXT NOT NULL CHECK (domaine IN ('coiffure', 'esthetique')),
@@ -69,7 +78,7 @@ CREATE TABLE patrons_details (
 );
 
 -- 4. Swipes (Historique des interactions)
-CREATE TABLE swipes (
+CREATE TABLE IF NOT EXISTS swipes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   de_profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   vers_profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
@@ -79,7 +88,7 @@ CREATE TABLE swipes (
 );
 
 -- 5. Matches (Quand un Apprenti et un Patron "like" mutuellement)
-CREATE TABLE matches (
+CREATE TABLE IF NOT EXISTS matches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   apprenti_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   patron_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
@@ -89,7 +98,7 @@ CREATE TABLE matches (
 );
 
 -- 6. Messages (Chat temps réel pour un match)
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   match_id UUID REFERENCES matches(id) ON DELETE CASCADE NOT NULL,
   expediteur_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
@@ -108,22 +117,40 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 -- POLITIQUES RLS
 
 -- PROFILES
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON profiles;
 CREATE POLICY "Public profiles are viewable by everyone" ON profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id OR EXISTS (SELECT 1 FROM profiles AS p WHERE p.id = auth.uid() AND p.role = 'admin_cfa'));
+
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admin can delete profiles" ON profiles;
 CREATE POLICY "Admin can delete profiles" ON profiles FOR DELETE USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin_cfa'));
 
 -- APPRENTIS DETAILS
+DROP POLICY IF EXISTS "Public apprentis are viewable by everyone" ON apprentis_details;
 CREATE POLICY "Public apprentis are viewable by everyone" ON apprentis_details FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can update own apprentis details" ON apprentis_details;
 CREATE POLICY "Users can update own apprentis details" ON apprentis_details FOR UPDATE USING (auth.uid() = profile_id);
+
+DROP POLICY IF EXISTS "Users can insert own apprentis details" ON apprentis_details;
 CREATE POLICY "Users can insert own apprentis details" ON apprentis_details FOR INSERT WITH CHECK (auth.uid() = profile_id);
 
 -- PATRONS DETAILS
+DROP POLICY IF EXISTS "Public patrons are viewable by everyone" ON patrons_details;
 CREATE POLICY "Public patrons are viewable by everyone" ON patrons_details FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can update own patrons details" ON patrons_details;
 CREATE POLICY "Users can update own patrons details" ON patrons_details FOR UPDATE USING (auth.uid() = profile_id);
+
+DROP POLICY IF EXISTS "Users can insert own patrons details" ON patrons_details;
 CREATE POLICY "Users can insert own patrons details" ON patrons_details FOR INSERT WITH CHECK (auth.uid() = profile_id);
 
 -- SWIPES
+DROP POLICY IF EXISTS "Approved users can insert own swipes" ON swipes;
 CREATE POLICY "Approved users can insert own swipes" ON swipes FOR INSERT WITH CHECK (
   auth.uid() = de_profile_id
   AND EXISTS (
@@ -131,6 +158,8 @@ CREATE POLICY "Approved users can insert own swipes" ON swipes FOR INSERT WITH C
     WHERE profiles.id = auth.uid() AND profiles.is_approved = true
   )
 );
+
+DROP POLICY IF EXISTS "Users and admin can view swipes" ON swipes;
 CREATE POLICY "Users and admin can view swipes" ON swipes FOR SELECT USING (
   auth.uid() = de_profile_id OR 
   auth.uid() = vers_profile_id OR 
@@ -159,20 +188,28 @@ CREATE TRIGGER trg_prevent_self_approve
   EXECUTE FUNCTION prevent_self_approve();
 
 -- MATCHES
+DROP POLICY IF EXISTS "Participants can view their matches" ON matches;
 CREATE POLICY "Participants can view their matches" ON matches FOR SELECT USING (
   auth.uid() = apprenti_id OR 
   auth.uid() = patron_id OR
   EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin_cfa')
 );
+
+DROP POLICY IF EXISTS "System can create matches" ON matches;
 CREATE POLICY "System can create matches" ON matches FOR INSERT WITH CHECK (auth.uid() = apprenti_id OR auth.uid() = patron_id);
+
+DROP POLICY IF EXISTS "Participants can update their matches" ON matches;
 CREATE POLICY "Participants can update their matches" ON matches FOR UPDATE USING (auth.uid() = apprenti_id OR auth.uid() = patron_id);
 
 -- MESSAGES
+DROP POLICY IF EXISTS "Participants can view messages" ON messages;
 CREATE POLICY "Participants can view messages" ON messages FOR SELECT USING (
   EXISTS (
     SELECT 1 FROM matches WHERE matches.id = messages.match_id AND (matches.apprenti_id = auth.uid() OR matches.patron_id = auth.uid())
   ) OR EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin_cfa')
 );
+
+DROP POLICY IF EXISTS "Participants can insert messages" ON messages;
 CREATE POLICY "Participants can insert messages" ON messages FOR INSERT WITH CHECK (
   auth.uid() = expediteur_id AND EXISTS (
     SELECT 1 FROM matches WHERE matches.id = messages.match_id AND (matches.apprenti_id = auth.uid() OR matches.patron_id = auth.uid())

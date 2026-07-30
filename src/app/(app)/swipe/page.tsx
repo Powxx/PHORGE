@@ -155,9 +155,9 @@ export default function SwipePage() {
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 pt-5 flex flex-col">
+    <main className="h-[calc(100dvh-5rem)] md:h-screen bg-zinc-50 dark:bg-zinc-950 p-4 pt-5 flex flex-col overflow-hidden">
 
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center min-h-0 w-full relative">
         {loading ? (
           <div className="text-zinc-500">Chargement des profils...</div>
         ) : !isApproved ? (

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, useAnimation, PanInfo, AnimatePresence } from 'framer-motion';
 import { Heart, X, Star, Info, MessageCircle, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
@@ -22,6 +22,10 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
 
   const controls = useAnimation();
   const router = useRouter();
+
+  useEffect(() => {
+    setCards(profiles);
+  }, [profiles]);
 
   const handleSwipeAction = async (cardId: string, type: 'like' | 'dislike') => {
     const swipedCard = cards.find(c => c.id === cardId);
@@ -84,7 +88,7 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
 
   return (
     <>
-      <div className="relative w-full h-[600px] max-w-sm mx-auto flex items-center justify-center">
+      <div className="relative w-full h-full max-h-[min(580px,100%)] max-w-sm mx-auto flex items-center justify-center flex-1">
         {cards.length === 0 && <div className="text-zinc-500 dark:text-zinc-400 text-center font-medium">Plus aucun profil disponible dans votre domaine. Revenez plus tard !</div>}
 
         {cards.map((card, index) => {
@@ -105,46 +109,46 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
               onDragEnd={(e, info) => isFront && handleDragEnd(e, info, card.id)}
               animate={isFront ? controls : undefined}
             >
-              <div className="relative w-full flex-grow bg-zinc-200 dark:bg-zinc-800">
+              <div className="relative w-full flex-grow bg-zinc-200 dark:bg-zinc-800 min-h-0">
                 <img src={card.photo} alt={card.nom} className="object-cover w-full h-full pointer-events-none" />
-                <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6 text-white pb-10">
+                <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 to-transparent p-4 sm:p-6 text-white pb-6 sm:pb-10">
                   <div className="flex justify-between items-end">
                     <div>
-                      <h2 className="text-3xl font-bold">{card.nom}</h2>
-                      <p className="text-lg opacity-90">{card.sousTitre}</p>
-                      {card.description && <p className="text-sm opacity-80 mt-2 line-clamp-3 italic">"{card.description}"</p>}
+                      <h2 className="text-2xl sm:text-3xl font-bold">{card.nom}</h2>
+                      <p className="text-sm sm:text-lg opacity-90">{card.sousTitre}</p>
+                      {card.description && <p className="text-xs sm:text-sm opacity-80 mt-2 line-clamp-2 sm:line-clamp-3 italic">"{card.description}"</p>}
                     </div>
                     <button
                       onClick={() => setSelectedProfile(card)}
-                      className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors backdrop-blur-sm"
+                      className="p-1.5 sm:p-2 bg-white/20 hover:bg-white/40 rounded-full transition-colors backdrop-blur-sm shrink-0"
                     >
-                      <Info size={24} className="text-white" />
+                      <Info className="text-white" size={20} />
                     </button>
                   </div>
                 </div>
               </div>
-              <div className="p-4 bg-white dark:bg-zinc-900 flex flex-col gap-4 border-t border-zinc-100 dark:border-zinc-800">
-                <div className="flex flex-wrap gap-2">
+              <div className="p-3 sm:p-4 bg-white dark:bg-zinc-900 flex flex-col gap-3 sm:gap-4 border-t border-zinc-100 dark:border-zinc-800 shrink-0">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {card.tags.map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-[#D4AF37]/20 text-[#D4AF37] rounded-full text-xs font-semibold tracking-wide">
+                    <span key={tag} className="px-2 py-0.5 sm:px-3 sm:py-1 bg-[#D4AF37]/20 text-[#D4AF37] rounded-full text-[10px] sm:text-xs font-semibold tracking-wide">
                       {tag}
                     </span>
                   ))}
                 </div>
-                <div className="flex justify-evenly items-center pt-2">
-                  <button className="p-4 rounded-full bg-white dark:bg-zinc-800 shadow-lg text-red-500 hover:scale-110 transition-transform"
+                <div className="flex justify-evenly items-center pt-1 sm:pt-2">
+                  <button className="p-3 sm:p-4 rounded-full bg-white dark:bg-zinc-800 shadow-lg text-red-500 hover:scale-110 transition-transform"
                     onClick={async () => {
                       await controls.start({ x: -500, opacity: 0, transition: { duration: 0.2 } });
                       handleSwipeAction(card.id, 'dislike');
                     }}>
-                    <X size={28} />
+                    <X size={24} />
                   </button>
-                  <button className="p-4 rounded-full bg-white dark:bg-zinc-800 shadow-lg text-green-500 hover:scale-110 transition-transform"
+                  <button className="p-3 sm:p-4 rounded-full bg-white dark:bg-zinc-800 shadow-lg text-green-500 hover:scale-110 transition-transform"
                     onClick={async () => {
                       await controls.start({ x: 500, opacity: 0, transition: { duration: 0.2 } });
                       handleSwipeAction(card.id, 'like');
                     }}>
-                    <Heart size={28} />
+                    <Heart size={24} />
                   </button>
                 </div>
               </div>
