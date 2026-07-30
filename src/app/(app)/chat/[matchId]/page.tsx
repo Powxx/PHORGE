@@ -35,13 +35,13 @@ export default function ChatPage() {
   if (loading) return <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-6 text-zinc-500">Chargement...</div>;
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 md:p-6 flex flex-col">
-      <div className="max-w-2xl mx-auto w-full mb-4">
-        <Link href="/messages" className="inline-flex items-center gap-2 text-zinc-500 hover:text-[#D4AF37] font-medium">
+    <main className="h-[calc(100dvh-5rem)] md:h-screen bg-zinc-50 dark:bg-zinc-950 p-4 md:p-6 flex flex-col overflow-hidden">
+      <div className="max-w-2xl mx-auto w-full mb-4 shrink-0">
+        <Link href="/messages" className="inline-flex items-center gap-2 text-zinc-500 hover:text-[#D4AF37] font-medium transition-colors">
           <ArrowLeft size={20} /> Retour aux messages
         </Link>
       </div>
-      <div className="flex-1 max-w-2xl mx-auto w-full h-[80vh]">
+      <div className="flex-1 max-w-2xl mx-auto w-full min-h-0 pb-4">
         <MatchChat matchId={matchId} currentUserId={userId} userRole={userRole} />
       </div>
     </main>

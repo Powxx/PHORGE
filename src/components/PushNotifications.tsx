@@ -28,6 +28,7 @@ export default function PushNotifications() {
   const pathnameRef = useRef(pathname);
   const userIdRef = useRef<string | null>(null);
   const roleRef = useRef<string | null>(null);
+  const domainRef = useRef<string | null>(null);
   const matchIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -56,6 +57,25 @@ export default function PushNotifications() {
         .single();
       roleRef.current = profile?.role || null;
 
+      // Fetch user domain
+      let userDomaine: string | null = null;
+      if (profile?.role === "apprenti") {
+        const { data: details } = await supabase
+          .from("apprentis_details")
+          .select("domaine")
+          .eq("profile_id", user.id)
+          .single();
+        userDomaine = details?.domaine || null;
+      } else if (profile?.role === "patron") {
+        const { data: details } = await supabase
+          .from("patrons_details")
+          .select("domaine")
+          .eq("profile_id", user.id)
+          .single();
+        userDomaine = details?.domaine || null;
+      }
+      domainRef.current = userDomaine;
+
       const { data: matches } = await supabase
         .from("matches")
         .select("id, apprenti_id, patron_id, statut")
@@ -65,6 +85,98 @@ export default function PushNotifications() {
 
       channel = supabase
         .channel(`push_notifications_${user.id}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "profiles" },
+          async (payload) => {
+            const oldApproved = (payload.old as any)?.is_approved;
+            const newApproved = (payload.new as any)?.is_approved;
+            const targetRole = (payload.new as any)?.role;
+            const targetId = (payload.new as any)?.id;
+
+            if (newApproved && !oldApproved && targetId !== userIdRef.current) {
+              const myRole = roleRef.current;
+              const myDomain = domainRef.current;
+              if (!myRole || !myDomain) return;
+
+              if (myRole === "apprenti" && targetRole === "patron") {
+                const { data: details } = await supabase
+                  .from("patrons_details")
+                  .select("nom_entreprise, domaine")
+                  .eq("profile_id", targetId)
+                  .single();
+                if (details && details.domaine === myDomain) {
+                  await showPushNotification("Nouveau salon disponible !", {
+                    body: `Le salon "${details.nom_entreprise}" a été approuvé.`,
+                    tag: `approved-profile-${targetId}`,
+                    url: "/swipe",
+                  });
+                }
+              } else if (myRole === "patron" && targetRole === "apprenti") {
+                const { data: details } = await supabase
+                  .from("apprentis_details")
+                  .select("prenom, nom, domaine")
+                  .eq("profile_id", targetId)
+                  .single();
+                if (details && details.domaine === myDomain) {
+                  await showPushNotification("Nouvel apprenti disponible !", {
+                    body: `${details.prenom} ${details.nom} a été approuvé.`,
+                    tag: `approved-profile-${targetId}`,
+                    url: "/swipe",
+                  });
+                }
+              }
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "apprentis_details" },
+          async (payload) => {
+            const newApprenti = payload.new as any;
+            const myRole = roleRef.current;
+            const myDomain = domainRef.current;
+
+            if (myRole === "patron" && myDomain && newApprenti.domaine === myDomain) {
+              const { data: prof } = await supabase
+                .from("profiles")
+                .select("is_approved")
+                .eq("id", newApprenti.profile_id)
+                .single();
+              if (prof?.is_approved) {
+                await showPushNotification("Nouvel apprenti disponible !", {
+                  body: `${newApprenti.prenom} ${newApprenti.nom} recherche un employeur.`,
+                  tag: `new-profile-${newApprenti.profile_id}`,
+                  url: "/swipe",
+                });
+              }
+            }
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "patrons_details" },
+          async (payload) => {
+            const newPatron = payload.new as any;
+            const myRole = roleRef.current;
+            const myDomain = domainRef.current;
+
+            if (myRole === "apprenti" && myDomain && newPatron.domaine === myDomain) {
+              const { data: prof } = await supabase
+                .from("profiles")
+                .select("is_approved")
+                .eq("id", newPatron.profile_id)
+                .single();
+              if (prof?.is_approved) {
+                await showPushNotification("Nouveau salon disponible !", {
+                  body: `Le salon "${newPatron.nom_entreprise}" recrute.`,
+                  tag: `new-profile-${newPatron.profile_id}`,
+                  url: "/swipe",
+                });
+              }
+            }
+          }
+        )
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "matches" },

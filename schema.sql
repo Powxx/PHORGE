@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS messages (
   match_id UUID REFERENCES matches(id) ON DELETE CASCADE NOT NULL,
   expediteur_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
   texte TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

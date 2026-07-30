@@ -15,7 +15,17 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         .select('*')
         .eq('match_id', matchId)
         .order('created_at', { ascending: true });
-      if (data) setMessages(data);
+      if (data) {
+        setMessages(data);
+        
+        // Mark all unread messages from the other user as read
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('match_id', matchId)
+          .neq('expediteur_id', currentUserId)
+          .eq('is_read', false);
+      }
     };
     fetchMessages();
 
@@ -27,14 +37,31 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         table: 'messages',
         filter: `match_id=eq.${matchId}`
       }, (payload) => {
-        setMessages((prev) => [...prev, payload.new]);
+        setMessages((prev) => {
+          // Prevent duplicates
+          if (prev.some(m => m.id === payload.new.id)) {
+            return prev;
+          }
+          // Filter out matching optimistic messages
+          const filtered = prev.filter(m => !(m.isOptimistic && m.texte === payload.new.texte && m.expediteur_id === payload.new.expediteur_id));
+          return [...filtered, payload.new];
+        });
+
+        // Mark incoming message as read if it's from the other user
+        if (payload.new.expediteur_id !== currentUserId) {
+          supabase
+            .from('messages')
+            .update({ is_read: true })
+            .eq('id', payload.new.id)
+            .then();
+        }
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [matchId]);
+  }, [matchId, currentUserId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -44,12 +71,45 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    await supabase.from('messages').insert({
+    const tempText = newMessage;
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
       match_id: matchId,
       expediteur_id: currentUserId,
-      texte: newMessage
-    });
+      texte: tempText,
+      is_read: false,
+      created_at: new Date().toISOString(),
+      isOptimistic: true
+    };
+
+    // Update UI immediately
+    setMessages((prev) => [...prev, optimisticMsg]);
     setNewMessage("");
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          match_id: matchId,
+          expediteur_id: currentUserId,
+          texte: tempText
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Failed to send message:", error);
+        setMessages((prev) => prev.filter(m => m.id !== tempId));
+        alert("Erreur lors de l'envoi du message");
+      } else if (data) {
+        // Replace optimistic message with real message
+        setMessages((prev) => prev.map(m => m.id === tempId ? data : m));
+      }
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) => prev.filter(m => m.id !== tempId));
+    }
   };
 
   const demanderEssai = async () => {

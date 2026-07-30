@@ -35,10 +35,27 @@ export default function MessagesPage() {
           
           const { data: otherDetails } = await supabase.from(table).select('*').eq('profile_id', otherId).single();
           
+          // Get last message text
+          const { data: lastMsg } = await supabase.from('messages')
+            .select('texte, created_at')
+            .eq('match_id', m.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          // Get unread count
+          const { count: unreadCount } = await supabase.from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('match_id', m.id)
+            .neq('expediteur_id', userId)
+            .eq('is_read', false);
+          
           return {
             ...m,
             otherName: isApprenti ? otherDetails?.nom_entreprise : `${otherDetails?.prenom} ${otherDetails?.nom}`,
-            otherPhoto: otherDetails?.photo_profil || (isApprenti ? "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=100" : "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=100")
+            otherPhoto: otherDetails?.photo_profil || (isApprenti ? "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=100" : "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=100"),
+            lastMessage: lastMsg?.texte || "Mise en relation établie. Écrivez un message !",
+            unreadCount: unreadCount || 0
           };
         }));
         setMatches(enrichedMatches);
@@ -68,14 +85,24 @@ export default function MessagesPage() {
             
             {matches.map(m => (
               <Link key={m.id} href={`/chat/${m.id}`} className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-                <div className="flex items-center gap-4">
-                  <img src={m.otherPhoto} alt={m.otherName} className="w-12 h-12 rounded-full object-cover" />
-                  <div>
-                    <h3 className="font-bold text-zinc-900 dark:text-zinc-100">{m.otherName}</h3>
-                    <p className="text-sm text-[#D4AF37] capitalize font-medium">{m.statut.replace('_', ' ')}</p>
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <img src={m.otherPhoto} alt={m.otherName} className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-zinc-900 dark:text-zinc-100 truncate">{m.otherName}</h3>
+                      <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded capitalize shrink-0">{m.statut.replace('_', ' ')}</span>
+                    </div>
+                    <p className={`text-sm truncate mt-0.5 ${m.unreadCount > 0 ? 'text-zinc-900 dark:text-white font-semibold' : 'text-zinc-500'}`}>
+                      {m.lastMessage}
+                    </p>
                   </div>
                 </div>
-                <ChevronRight className="text-zinc-400" />
+                <div className="flex items-center gap-2 ml-4 shrink-0">
+                  {m.unreadCount > 0 && (
+                    <span className="w-2.5 h-2.5 bg-[#D4AF37] rounded-full"></span>
+                  )}
+                  <ChevronRight className="text-zinc-400" size={20} />
+                </div>
               </Link>
             ))}
           </div>
