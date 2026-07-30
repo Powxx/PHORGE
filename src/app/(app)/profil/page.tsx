@@ -1,16 +1,28 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { User, LogOut, FileText, Settings } from 'lucide-react';
+import { User, LogOut, FileText, Settings, Bell, BellOff, BellRing } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ProfileMap from '@/components/ProfileMap';
+import { ensureNotificationPermission } from '@/lib/notifications';
 
 export default function ProfilPage() {
   const [profileData, setProfileData] = useState<any>(null);
   const [role, setRole] = useState<'apprenti'|'patron'|'admin_cfa'|null>(null);
   const [loading, setLoading] = useState(true);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (!('Notification' in window)) {
+        setNotificationPermission('unsupported');
+      } else {
+        setNotificationPermission(Notification.permission);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchMyProfile = async () => {
@@ -100,6 +112,55 @@ export default function ProfilPage() {
               adresse={profileData.adresse}
             />
           )}
+
+          {/* Configuration des Notifications */}
+          <div className="mt-6 text-left bg-zinc-50 dark:bg-zinc-950 rounded-2xl p-6 border border-zinc-200 dark:border-zinc-800">
+            <h3 className="font-bold flex items-center gap-2 mb-4 text-lg">
+              <Bell size={20} className="text-[#D4AF37]" /> Notifications Push
+            </h3>
+            
+            {notificationPermission === 'granted' && (
+              <div className="flex items-center gap-3 text-green-600 dark:text-green-400 text-sm font-medium">
+                <BellRing size={20} className="shrink-0" />
+                <span>Les notifications sont activées ! Vous recevrez des alertes en cas de nouveau match, message ou profil.</span>
+              </div>
+            )}
+
+            {notificationPermission === 'default' && (
+              <div className="flex flex-col gap-3">
+                <p className="text-zinc-500 text-sm">
+                  Activez les notifications pour ne rater aucun match ou message important.
+                </p>
+                <button
+                  onClick={async () => {
+                    const result = await ensureNotificationPermission();
+                    setNotificationPermission(result);
+                  }}
+                  className="py-3 px-4 bg-[#D4AF37] hover:bg-[#B8962E] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm w-full"
+                >
+                  <Bell size={18} /> Activer les notifications
+                </button>
+              </div>
+            )}
+
+            {notificationPermission === 'denied' && (
+              <div className="flex flex-col gap-2 text-sm">
+                <div className="flex items-center gap-3 text-red-500 font-medium">
+                  <BellOff size={20} className="shrink-0" />
+                  <span>Notifications bloquées</span>
+                </div>
+                <p className="text-zinc-500 text-xs">
+                  Les notifications sont bloquées par votre navigateur. Pour les activer, veuillez cliquer sur l'icône de cadenas à gauche de l'URL dans votre barre d'adresse et autoriser à nouveau les notifications.
+                </p>
+              </div>
+            )}
+
+            {notificationPermission === 'unsupported' && (
+              <p className="text-zinc-500 text-sm italic">
+                Les notifications ne sont pas prises en charge par votre navigateur ou votre appareil actuel.
+              </p>
+            )}
+          </div>
           
           <Link href="/profil/edit" className="w-full mt-8 py-4 bg-zinc-100 dark:bg-zinc-800 rounded-xl font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
             <Settings size={20} /> Modifier mes informations

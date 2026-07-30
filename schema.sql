@@ -217,6 +217,13 @@ CREATE POLICY "Participants can insert messages" ON messages FOR INSERT WITH CHE
   )
 );
 
+DROP POLICY IF EXISTS "Participants can update messages" ON messages;
+CREATE POLICY "Participants can update messages" ON messages FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM matches WHERE matches.id = messages.match_id AND (matches.apprenti_id = auth.uid() OR matches.patron_id = auth.uid())
+  )
+);
+
 -- TRIGGERS
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
