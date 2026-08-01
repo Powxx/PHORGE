@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabase/client';
+
 export async function ensureNotificationPermission(): Promise<NotificationPermission> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     return "denied";
@@ -55,4 +57,68 @@ export async function showPushNotification(
       notification.close();
     };
   }
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+export async function subscribeUserToPush(): Promise<NotificationPermission> {
+  const permission = await ensureNotificationPermission();
+  if (permission !== "granted") {
+    return permission;
+  }
+
+  const registration = await registerNotificationServiceWorker();
+  if (!registration) {
+    console.error("Service worker registration not available for push subscriptions");
+    return permission;
+  }
+
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!vapidPublicKey) {
+    console.error("NEXT_PUBLIC_VAPID_PUBLIC_KEY environment variable is not defined");
+    return permission;
+  }
+
+  try {
+    await navigator.serviceWorker.ready;
+
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey as any,
+      });
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase
+        .from("user_push_subscriptions")
+        .insert({
+          user_id: user.id,
+          subscription: subscription.toJSON(),
+        });
+      
+      if (error) {
+        if (error.code !== "23505" && error.code !== "P0001") {
+          console.error("Error saving push subscription to DB:", error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Push subscription registration failed:", error);
+  }
+
+  return permission;
 }

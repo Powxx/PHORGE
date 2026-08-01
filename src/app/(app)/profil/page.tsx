@@ -5,7 +5,7 @@ import { User, LogOut, FileText, Settings, Bell, BellOff, BellRing } from 'lucid
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ProfileMap from '@/components/ProfileMap';
-import { ensureNotificationPermission } from '@/lib/notifications';
+import { subscribeUserToPush } from '@/lib/notifications';
 
 export default function ProfilPage() {
   const [profileData, setProfileData] = useState<any>(null);
@@ -133,7 +133,7 @@ export default function ProfilPage() {
                 </p>
                 <button
                   onClick={async () => {
-                    const result = await ensureNotificationPermission();
+                    const result = await subscribeUserToPush();
                     setNotificationPermission(result);
                   }}
                   className="py-3 px-4 bg-[#D4AF37] hover:bg-[#B8962E] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm w-full"

@@ -6,7 +6,39 @@ import { Send, FileText, CheckCircle } from 'lucide-react';
 export default function MatchChat({ matchId, currentUserId, userRole }: { matchId: string, currentUserId: string, userRole: 'apprenti' | 'patron' }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [recipientId, setRecipientId] = useState<string | null>(null);
+  const [senderName, setSenderName] = useState<string>("Quelqu'un");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchRecipient = async () => {
+      const { data } = await supabase
+        .from('matches')
+        .select('apprenti_id, patron_id')
+        .eq('id', matchId)
+        .single();
+      if (data) {
+        const otherId = data.apprenti_id === currentUserId ? data.patron_id : data.apprenti_id;
+        setRecipientId(otherId);
+      }
+    };
+    fetchRecipient();
+  }, [matchId, currentUserId]);
+
+  useEffect(() => {
+    const fetchSenderName = async () => {
+      const { data: prof } = await supabase.from('profiles').select('role').eq('id', currentUserId).single();
+      if (prof) {
+        const table = prof.role === 'apprenti' ? 'apprentis_details' : 'patrons_details';
+        const { data: details } = await supabase.from(table).select('*').eq('profile_id', currentUserId).single();
+        if (details) {
+          const name = prof.role === 'apprenti' ? `${details.prenom} ${details.nom}` : details.nom_entreprise;
+          setSenderName(name);
+        }
+      }
+    };
+    fetchSenderName();
+  }, [currentUserId]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -105,6 +137,20 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
       } else if (data) {
         // Replace optimistic message with real message
         setMessages((prev) => prev.map(m => m.id === tempId ? data : m));
+        
+        // Trigger push notification in background
+        if (recipientId) {
+          fetch('/api/push/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: recipientId,
+              title: senderName,
+              body: tempText,
+              url: `/chat/${matchId}`
+            })
+          }).catch(err => console.error("Error triggering push notification:", err));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -113,22 +159,48 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
   };
 
   const demanderEssai = async () => {
+    const text = "📢 Le patron a fait une demande de période d'essai au CFA.";
     await supabase.from('messages').insert({
       match_id: matchId,
       expediteur_id: currentUserId,
-      texte: "📢 Le patron a fait une demande de période d'essai au CFA."
+      texte: text
     });
     await supabase.from('matches').update({ statut: 'essai_demande' }).eq('id', matchId);
+    if (recipientId) {
+      fetch('/api/push/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: recipientId,
+          title: senderName,
+          body: text,
+          url: `/chat/${matchId}`
+        })
+      }).catch(err => console.error("Error triggering push notification:", err));
+    }
     alert("Demande envoyée au CFA !");
   };
 
   const declarerContrat = async () => {
+    const text = "🎉 Le patron souhaite signer un contrat d'apprentissage !";
     await supabase.from('messages').insert({
       match_id: matchId,
       expediteur_id: currentUserId,
-      texte: "🎉 Le patron souhaite signer un contrat d'apprentissage !"
+      texte: text
     });
     await supabase.from('matches').update({ statut: 'contrat_demande' }).eq('id', matchId);
+    if (recipientId) {
+      fetch('/api/push/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: recipientId,
+          title: senderName,
+          body: text,
+          url: `/chat/${matchId}`
+        })
+      }).catch(err => console.error("Error triggering push notification:", err));
+    }
     alert("Intention de contrat déclarée au CFA !");
   };
 
