@@ -159,7 +159,7 @@ export default function ProfilPage() {
                         if (data.sent > 0) {
                           alert("Notification de test envoyée !");
                         } else {
-                          alert("Aucun appareil enregistré trouvé pour l'envoi de la notification. Veuillez cliquer sur 'Réenregistrer cet appareil' d'abord.");
+                          alert(`Réponse du serveur : ${JSON.stringify(data)}`);
                         }
                       }
                     }}
