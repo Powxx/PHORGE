@@ -46,25 +46,32 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.stringify({ title, body, url: url || '/messages' });
     let sentCount = 0;
+    const errors: string[] = [];
 
     const promises = subscriptions.map(async (subRecord: any) => {
       try {
+        console.log(`[API /api/push/notify] Attempting send to subscription:`, subRecord.id);
         await webpush.sendNotification(subRecord.subscription, payload);
         sentCount++;
+        console.log(`[API /api/push/notify] Send success for subscription:`, subRecord.id);
       } catch (err: any) {
+        console.error(`[API /api/push/notify] Send failed for subscription:`, subRecord.id, err);
+        errors.push(`Subscription ${subRecord.id} failed: ${err.message || err.toString()} (status: ${err.statusCode})`);
         // Handle expired or gone subscriptions
         if (err.statusCode === 410 || err.statusCode === 404) {
-          console.log(`Pruning expired push subscription ${subRecord.id}`);
+          console.log(`[API /api/push/notify] Pruning expired push subscription ${subRecord.id}`);
           await supabase.rpc('delete_push_subscription', { sub_id: subRecord.id });
-        } else {
-          console.error(`Error sending to push subscription ${subRecord.id}:`, err);
         }
       }
     });
 
     await Promise.all(promises);
 
-    return NextResponse.json({ success: true, sent: sentCount });
+    return NextResponse.json({ 
+      success: true, 
+      sent: sentCount,
+      errors: errors.length > 0 ? errors : undefined
+    });
   } catch (err: any) {
     console.error('Web Push delivery error:', err);
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
