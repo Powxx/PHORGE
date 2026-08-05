@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { Bell } from "lucide-react";
 import {
-  ensureNotificationPermission,
   registerNotificationServiceWorker,
   showPushNotification,
+  subscribeUserToPush,
 } from "@/lib/notifications";
 
 type MatchRow = {
@@ -30,6 +31,7 @@ export default function PushNotifications() {
   const roleRef = useRef<string | null>(null);
   const domainRef = useRef<string | null>(null);
   const matchIdsRef = useRef<Set<string>>(new Set());
+  const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
     pathnameRef.current = pathname;
@@ -41,7 +43,15 @@ export default function PushNotifications() {
 
     const setup = async () => {
       await registerNotificationServiceWorker();
-      await ensureNotificationPermission();
+
+      if (typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission === "default" && !localStorage.getItem("phorge_notifications_prompted")) {
+          setShowPrompt(true);
+        } else if (Notification.permission === "granted") {
+          // If already granted, auto-subscribe to update DB subscription
+          await subscribeUserToPush();
+        }
+      }
 
       const {
         data: { user },
@@ -279,5 +289,54 @@ export default function PushNotifications() {
     };
   }, []);
 
-  return null;
+  const handleEnable = async () => {
+    localStorage.setItem("phorge_notifications_prompted", "true");
+    setShowPrompt(false);
+    await subscribeUserToPush();
+  };
+
+  const handleDismiss = () => {
+    localStorage.setItem("phorge_notifications_prompted", "true");
+    setShowPrompt(false);
+  };
+
+  if (!showPrompt) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-center relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-[#D4AF37]/10 to-transparent"></div>
+        
+        <div className="relative z-10">
+          <div className="w-16 h-16 mx-auto bg-[#D4AF37]/10 rounded-full flex items-center justify-center mb-6 animate-pulse">
+            <Bell size={32} className="text-[#D4AF37]" />
+          </div>
+
+          <h2 className="text-xl font-black text-zinc-900 dark:text-white mb-2 animate-bounce">
+            Activez les notifications 🔔
+          </h2>
+          
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8 leading-relaxed">
+            Ne manquez aucun match, message ou opportunité de contrat importante sur la plateforme ! PHORGE vous informe en temps réel.
+          </p>
+
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleEnable}
+              className="py-3.5 px-6 bg-[#D4AF37] hover:bg-[#B8962E] text-white font-bold rounded-2xl w-full transition-all shadow-lg shadow-[#D4AF37]/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Autoriser les notifications
+            </button>
+            
+            <button
+              onClick={handleDismiss}
+              className="py-3 px-6 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 text-sm font-semibold rounded-2xl transition-colors"
+            >
+              Plus tard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
