@@ -73,19 +73,17 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 export async function subscribeUserToPush(): Promise<NotificationPermission> {
   const permission = await ensureNotificationPermission();
   if (permission !== "granted") {
-    return permission;
+    throw new Error("Permission de notification non accordée : " + permission);
   }
 
   const registration = await registerNotificationServiceWorker();
   if (!registration) {
-    console.error("Service worker registration not available for push subscriptions");
-    return permission;
+    throw new Error("L'enregistrement du Service Worker a échoué ou n'est pas pris en charge par ce navigateur.");
   }
 
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!vapidPublicKey) {
-    console.error("NEXT_PUBLIC_VAPID_PUBLIC_KEY environment variable is not defined");
-    return permission;
+    throw new Error("Clé publique VAPID (NEXT_PUBLIC_VAPID_PUBLIC_KEY) manquante dans l'environnement.");
   }
 
   try {
@@ -102,22 +100,25 @@ export async function subscribeUserToPush(): Promise<NotificationPermission> {
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase
-        .from("user_push_subscriptions")
-        .insert({
-          user_id: user.id,
-          subscription: subscription.toJSON(),
-        });
-      
-      if (error) {
-        if (error.code !== "23505" && error.code !== "P0001") {
-          console.error("Error saving push subscription to DB:", error);
-        }
+    if (!user) {
+      throw new Error("Utilisateur non connecté.");
+    }
+
+    const { error } = await supabase
+      .from("user_push_subscriptions")
+      .insert({
+        user_id: user.id,
+        subscription: subscription.toJSON(),
+      });
+    
+    if (error) {
+      if (error.code !== "23505" && error.code !== "P0001") {
+        throw new Error(`Échec de la sauvegarde de l'abonnement en base de données : ${error.message}`);
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Push subscription registration failed:", error);
+    throw new Error(error.message || "Erreur inconnue lors de l'enregistrement de l'abonnement push.");
   }
 
   return permission;

@@ -128,9 +128,13 @@ export default function ProfilPage() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={async () => {
-                      const result = await subscribeUserToPush();
-                      setNotificationPermission(result);
-                      alert("Votre appareil a été réenregistré avec succès !");
+                      try {
+                        const result = await subscribeUserToPush();
+                        setNotificationPermission(result);
+                        alert("Votre appareil a été réenregistré avec succès !");
+                      } catch (err: any) {
+                        alert("Erreur d'enregistrement : " + err.message);
+                      }
                     }}
                     className="py-2.5 px-4 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-xs"
                   >
@@ -174,8 +178,12 @@ export default function ProfilPage() {
                 </p>
                 <button
                   onClick={async () => {
-                    const result = await subscribeUserToPush();
-                    setNotificationPermission(result);
+                    try {
+                      const result = await subscribeUserToPush();
+                      setNotificationPermission(result);
+                    } catch (err: any) {
+                      alert("Erreur d'activation : " + err.message);
+                    }
                   }}
                   className="py-3 px-4 bg-[#D4AF37] hover:bg-[#B8962E] text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm w-full"
                 >
