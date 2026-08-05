@@ -104,20 +104,28 @@ export async function subscribeUserToPush(): Promise<NotificationPermission> {
       throw new Error("Utilisateur non connecté.");
     }
 
-    const { error } = await supabase
+    const subJson = subscription.toJSON();
+    console.log("[Push Registration] User ID:", user.id);
+    console.log("[Push Registration] Subscription payload:", subJson);
+
+    const { data: insertResult, error } = await supabase
       .from("user_push_subscriptions")
       .insert({
         user_id: user.id,
-        subscription: subscription.toJSON(),
-      });
+        subscription: subJson,
+      })
+      .select();
     
     if (error) {
+      console.error("[Push Registration] DB insert error:", error);
       if (error.code !== "23505" && error.code !== "P0001") {
         throw new Error(`Échec de la sauvegarde de l'abonnement en base de données : ${error.message}`);
       }
+    } else {
+      console.log("[Push Registration] DB insert success. Result:", insertResult);
     }
   } catch (error: any) {
-    console.error("Push subscription registration failed:", error);
+    console.error("[Push Registration] Registration failed:", error);
     throw new Error(error.message || "Erreur inconnue lors de l'enregistrement de l'abonnement push.");
   }
 

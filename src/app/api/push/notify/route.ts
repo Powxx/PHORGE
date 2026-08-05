@@ -18,8 +18,10 @@ if (vapidPublicKey && vapidPrivateKey) {
 export async function POST(request: NextRequest) {
   try {
     const { userId, title, body, url } = await request.json();
+    console.log(`[API /api/push/notify] POST received for userId: "${userId}"`);
 
     if (!userId || !title || !body) {
+      console.warn('[API /api/push/notify] Missing required parameters');
       return NextResponse.json({ error: 'Parameters userId, title, and body are required' }, { status: 400 });
     }
 
@@ -29,8 +31,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error('Error fetching subscriptions:', error);
+      console.error('[API /api/push/notify] get_user_subscriptions RPC error:', error);
       return NextResponse.json({ error: 'Failed to fetch user subscriptions' }, { status: 500 });
+    }
+
+    console.log(`[API /api/push/notify] Found ${subscriptions?.length || 0} subscriptions for user "${userId}"`);
+    if (subscriptions && subscriptions.length > 0) {
+      console.log(`[API /api/push/notify] First subscription endpoint:`, subscriptions[0].subscription?.endpoint);
     }
 
     if (!subscriptions || subscriptions.length === 0) {
