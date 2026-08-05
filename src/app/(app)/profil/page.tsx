@@ -120,9 +120,50 @@ export default function ProfilPage() {
             </h3>
             
             {notificationPermission === 'granted' && (
-              <div className="flex items-center gap-3 text-green-600 dark:text-green-400 text-sm font-medium">
-                <BellRing size={20} className="shrink-0" />
-                <span>Les notifications sont activées ! Vous recevrez des alertes en cas de nouveau match, message ou profil.</span>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3 text-green-600 dark:text-green-400 text-sm font-medium">
+                  <BellRing size={20} className="shrink-0" />
+                  <span>Les notifications sont activées sur votre navigateur ! Vous recevrez des alertes en cas de nouveau match, message ou profil.</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={async () => {
+                      const result = await subscribeUserToPush();
+                      setNotificationPermission(result);
+                      alert("Votre appareil a été réenregistré avec succès !");
+                    }}
+                    className="py-2.5 px-4 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-xs"
+                  >
+                    <Bell size={14} /> Réenregistrer cet appareil
+                  </button>
+                  
+                  <button
+                    onClick={async () => {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        const res = await fetch('/api/push/notify', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            userId: user.id,
+                            title: "Test de Notification PHORGE 🔔",
+                            body: "Félicitations, vos notifications push fonctionnent parfaitement !",
+                            url: "/profil"
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.sent > 0) {
+                          alert("Notification de test envoyée !");
+                        } else {
+                          alert("Aucun appareil enregistré trouvé pour l'envoi de la notification. Veuillez cliquer sur 'Réenregistrer cet appareil' d'abord.");
+                        }
+                      }
+                    }}
+                    className="py-2.5 px-4 bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 text-[#D4AF37] rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-xs"
+                  >
+                    Tester la notification
+                  </button>
+                </div>
               </div>
             )}
 
