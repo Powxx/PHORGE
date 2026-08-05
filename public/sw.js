@@ -34,11 +34,24 @@ self.addEventListener("push", (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
-      data: { url: data.url },
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      // Don't show push notification if the user is already focused on the target chat URL
+      const isFocusedOnTarget = clients.some(client => 
+        client.focused && new URL(client.url).pathname === data.url
+      );
+      if (isFocusedOnTarget) {
+        return;
+      }
+
+      return self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        vibrate: [200, 100, 200],
+        tag: data.url, // Collapses multiple notifications from the same chat
+        renotify: true,
+        data: { url: data.url },
+      });
     })
   );
 });

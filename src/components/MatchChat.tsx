@@ -11,6 +11,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!currentUserId) return;
     const fetchRecipient = async () => {
       const { data } = await supabase
         .from('matches')
@@ -154,7 +155,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         setMessages((prev) => prev.map(m => m.id === tempId ? data : m));
         
         // Trigger push notification in background
-        if (recipientId) {
+        if (recipientId && recipientId !== currentUserId) {
           fetch('/api/push/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -181,7 +182,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
       texte: text
     });
     await supabase.from('matches').update({ statut: 'essai_demande' }).eq('id', matchId);
-    if (recipientId) {
+    if (recipientId && recipientId !== currentUserId) {
       fetch('/api/push/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,7 +205,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
       texte: text
     });
     await supabase.from('matches').update({ statut: 'contrat_demande' }).eq('id', matchId);
-    if (recipientId) {
+    if (recipientId && recipientId !== currentUserId) {
       fetch('/api/push/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
