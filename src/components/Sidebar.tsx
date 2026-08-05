@@ -34,22 +34,39 @@ export default function Sidebar() {
   const checkUnread = useCallback(async () => {
     if (!currentUser || isAdmin) return;
 
-    const { data: myMatches } = await supabase.from('matches')
-      .select('id')
-      .or(`apprenti_id.eq.${currentUser.id},patron_id.eq.${currentUser.id}`);
-    const ids = (myMatches || []).map(m => m.id);
-    if (ids.length === 0) {
-      setHasUnread(false);
-      return;
+    try {
+      const { data: myMatches, error: matchesError } = await supabase.from('matches')
+        .select('id')
+        .or(`apprenti_id.eq.${currentUser.id},patron_id.eq.${currentUser.id}`);
+      
+      if (matchesError) {
+        console.error("[Sidebar] Error fetching matches for unread count:", matchesError);
+        return;
+      }
+
+      const ids = (myMatches || []).map(m => m.id);
+      if (ids.length === 0) {
+        console.log("[Sidebar] No matches found, setting hasUnread to false");
+        setHasUnread(false);
+        return;
+      }
+
+      const { count, error: countError } = await supabase.from('messages')
+        .select('*', { count: 'exact', head: true })
+        .neq('expediteur_id', currentUser.id)
+        .eq('is_read', false)
+        .in('match_id', ids);
+
+      if (countError) {
+        console.error("[Sidebar] Error fetching unread count:", countError);
+        return;
+      }
+
+      console.log(`[Sidebar] Unread count calculated: ${count} for matches:`, ids);
+      setHasUnread((count || 0) > 0);
+    } catch (err) {
+      console.error("[Sidebar] Unexpected error in checkUnread:", err);
     }
-
-    const { count } = await supabase.from('messages')
-      .select('*', { count: 'exact', head: true })
-      .neq('expediteur_id', currentUser.id)
-      .eq('is_read', false)
-      .in('match_id', ids);
-
-    setHasUnread((count || 0) > 0);
   }, [currentUser, isAdmin]);
 
   // 3. Trigger check on page navigation (pathname change) or state updates

@@ -29,6 +29,7 @@ CREATE OR REPLACE FUNCTION get_user_subscriptions(target_user_id UUID)
 RETURNS SETOF user_push_subscriptions
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   RETURN QUERY SELECT * FROM user_push_subscriptions WHERE user_id = target_user_id;
@@ -39,6 +40,7 @@ CREATE OR REPLACE FUNCTION delete_push_subscription(sub_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 BEGIN
   DELETE FROM user_push_subscriptions WHERE id = sub_id;
