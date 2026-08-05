@@ -11,8 +11,18 @@ const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || '';
 const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:admin@phorge.fr';
 
+console.log("[API VAPID Config Check]", {
+  publicKeyLoaded: !!vapidPublicKey,
+  publicKeyLength: vapidPublicKey.length,
+  privateKeyLoaded: !!vapidPrivateKey,
+  privateKeyLength: vapidPrivateKey.length,
+  subject: vapidSubject
+});
+
 if (vapidPublicKey && vapidPrivateKey) {
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+} else {
+  console.warn("[API VAPID Config Check] WARNING: VAPID keys NOT fully loaded. Push notifications will fail with 401!");
 }
 
 export async function POST(request: NextRequest) {
