@@ -142,23 +142,25 @@ export default function Sidebar() {
       </aside>
 
       {/* Mobile Bottom Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 z-50 px-6 py-3 flex justify-between items-center safe-area-bottom shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
-        {links.map((link) => {
-          const isActive = pathname.startsWith(link.href);
-          const isMessages = link.href === '/messages';
-          return (
-            <Link key={link.href} href={link.href} className={`relative flex flex-col items-center gap-1 p-2 transition-colors ${
-              isActive ? 'text-[#D4AF37]' : 'text-zinc-400 hover:text-zinc-600'
-            }`}>
-              <link.icon size={24} className={isActive ? 'fill-current opacity-20' : ''} />
-              <span className="text-[10px] font-bold">{link.label}</span>
-              {isMessages && hasUnread && (
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#D4AF37] rounded-full ring-2 ring-white dark:ring-zinc-950"></span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+      {!pathname.startsWith('/chat/') && (
+        <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 z-50 px-6 py-3 flex justify-between items-center safe-area-bottom shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
+          {links.map((link) => {
+            const isActive = pathname.startsWith(link.href);
+            const isMessages = link.href === '/messages';
+            return (
+              <Link key={link.href} href={link.href} className={`relative flex flex-col items-center gap-1 p-2 transition-colors ${
+                isActive ? 'text-[#D4AF37]' : 'text-zinc-400 hover:text-zinc-600'
+              }`}>
+                <link.icon size={24} className={isActive ? 'fill-current opacity-20' : ''} />
+                <span className="text-[10px] font-bold">{link.label}</span>
+                {isMessages && hasUnread && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#D4AF37] rounded-full ring-2 ring-white dark:ring-zinc-950"></span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </>
   );
 }

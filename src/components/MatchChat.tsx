@@ -220,7 +220,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-2xl mx-auto bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+    <div className="flex flex-col h-full w-full max-w-2xl mx-auto bg-white dark:bg-zinc-950 md:border border-t border-zinc-200 dark:border-zinc-800 rounded-none md:rounded-xl overflow-hidden shadow-none md:shadow-sm">
       {userRole === 'patron' && (
         <div className="bg-[#D4AF37]/10 p-3 flex gap-2 justify-center border-b border-[#D4AF37]/20">
           <button onClick={demanderEssai} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-zinc-900 border border-[#D4AF37] text-[#D4AF37] rounded-lg text-sm font-medium hover:bg-[#D4AF37] hover:text-white transition-colors">
@@ -248,7 +248,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex gap-2">
+      <form onSubmit={sendMessage} className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:pb-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 flex gap-2">
         <input 
           type="text" 
           value={newMessage}
