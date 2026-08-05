@@ -11,6 +11,8 @@ export default function MessagesPage() {
   const router = useRouter();
 
   useEffect(() => {
+    let channel: any = null;
+
     const fetchMatches = async () => {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData?.user) {
@@ -59,11 +61,23 @@ export default function MessagesPage() {
           };
         }));
         setMatches(enrichedMatches);
+
+        if (!channel && userMatches.length > 0) {
+          channel = supabase.channel('conversations_list_realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+              fetchMatches();
+            })
+            .subscribe();
+        }
       }
       setLoading(false);
     };
 
     fetchMatches();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [router]);
 
   return (

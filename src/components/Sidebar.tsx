@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Compass, MessageCircle, User, ShieldCheck, LogOut } from 'lucide-react';
@@ -12,57 +12,67 @@ export default function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // 1. Check user and admin status on mount
   useEffect(() => {
-    let channel: any = null;
-
-    const setup = async () => {
+    const setupUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Admin check
+        setCurrentUser(user);
         const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
         if (data?.role === 'admin_cfa') {
           setIsAdmin(true);
-        } else {
-          // Check unread status
-          const checkUnread = async () => {
-            const { data: myMatches } = await supabase.from('matches')
-              .select('id')
-              .or(`apprenti_id.eq.${user.id},patron_id.eq.${user.id}`);
-            const ids = (myMatches || []).map(m => m.id);
-            if (ids.length === 0) {
-              setHasUnread(false);
-              return;
-            }
-
-            const { count } = await supabase.from('messages')
-              .select('*', { count: 'exact', head: true })
-              .neq('expediteur_id', user.id)
-              .eq('is_read', false)
-              .in('match_id', ids);
-
-            setHasUnread((count || 0) > 0);
-          };
-
-          await checkUnread();
-
-          // Listen to changes on messages table to update sidebar dot
-          channel = supabase.channel('sidebar_unread_messages')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-              checkUnread();
-            })
-            .subscribe();
         }
       }
       setIsReady(true);
     };
+    setupUser();
+  }, []);
 
-    setup();
+  // 2. Function to check unread messages
+  const checkUnread = useCallback(async () => {
+    if (!currentUser || isAdmin) return;
+
+    const { data: myMatches } = await supabase.from('matches')
+      .select('id')
+      .or(`apprenti_id.eq.${currentUser.id},patron_id.eq.${currentUser.id}`);
+    const ids = (myMatches || []).map(m => m.id);
+    if (ids.length === 0) {
+      setHasUnread(false);
+      return;
+    }
+
+    const { count } = await supabase.from('messages')
+      .select('*', { count: 'exact', head: true })
+      .neq('expediteur_id', currentUser.id)
+      .eq('is_read', false)
+      .in('match_id', ids);
+
+    setHasUnread((count || 0) > 0);
+  }, [currentUser, isAdmin]);
+
+  // 3. Trigger check on page navigation (pathname change) or state updates
+  useEffect(() => {
+    if (isReady && currentUser && !isAdmin) {
+      checkUnread();
+    }
+  }, [pathname, isReady, currentUser, isAdmin, checkUnread]);
+
+  // 4. Setup Realtime subscription
+  useEffect(() => {
+    if (!isReady || !currentUser || isAdmin) return;
+
+    const channel = supabase.channel('sidebar_unread_messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        checkUnread();
+      })
+      .subscribe();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isReady, currentUser, isAdmin, checkUnread]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

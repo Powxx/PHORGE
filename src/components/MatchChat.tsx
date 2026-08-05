@@ -48,15 +48,20 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         .eq('match_id', matchId)
         .order('created_at', { ascending: true });
       if (data) {
-        setMessages(data);
+        // Mark all messages from the other user as read in local state
+        const localUpdated = data.map(m => m.expediteur_id !== currentUserId ? { ...m, is_read: true } : m);
+        setMessages(localUpdated);
         
-        // Mark all unread messages from the other user as read
-        await supabase
+        // Mark all unread messages from the other user as read in DB
+        const { error } = await supabase
           .from('messages')
           .update({ is_read: true })
           .eq('match_id', matchId)
           .neq('expediteur_id', currentUserId)
           .eq('is_read', false);
+        if (error) {
+          console.error("Error marking messages as read on load:", error);
+        }
       }
     };
     fetchMessages();
@@ -69,14 +74,19 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         table: 'messages',
         filter: `match_id=eq.${matchId}`
       }, (payload) => {
+        const newMsg = payload.new as any;
+        const incomingMsg = { 
+          ...newMsg, 
+          is_read: newMsg.expediteur_id !== currentUserId ? true : newMsg.is_read 
+        };
         setMessages((prev) => {
           // Prevent duplicates
-          if (prev.some(m => m.id === payload.new.id)) {
+          if (prev.some(m => m.id === incomingMsg.id)) {
             return prev;
           }
           // Filter out matching optimistic messages
-          const filtered = prev.filter(m => !(m.isOptimistic && m.texte === payload.new.texte && m.expediteur_id === payload.new.expediteur_id));
-          return [...filtered, payload.new];
+          const filtered = prev.filter(m => !(m.isOptimistic && m.texte === incomingMsg.texte && m.expediteur_id === incomingMsg.expediteur_id));
+          return [...filtered, incomingMsg];
         });
 
         // Mark incoming message as read if it's from the other user
@@ -85,7 +95,12 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
             .from('messages')
             .update({ is_read: true })
             .eq('id', payload.new.id)
-            .then();
+            .select()
+            .then(({ error }) => {
+              if (error) {
+                console.error("Error marking incoming message as read:", error);
+              }
+            });
         }
       })
       .subscribe();
