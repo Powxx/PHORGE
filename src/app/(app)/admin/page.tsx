@@ -396,7 +396,11 @@ export default function AdminDashboard() {
                   </tr>
                 ))}
               </tbody>
-             {/* Gestion des Membres de l'école */}
+            </table>
+          </div>
+        </div>
+
+        {/* Gestion des Membres de l'école */}
         <div className="mt-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
           <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-between items-center">
             <div>
@@ -452,9 +456,6 @@ export default function AdminDashboard() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
-        </div>>
             </table>
           </div>
         </div>
