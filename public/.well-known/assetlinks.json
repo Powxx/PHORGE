@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.ecm_academie.phorge.twa",
+        "sha256_cert_fingerprints": ["A6:C6:FF:FC:DC:AF:12:5F:6C:EB:9D:CF:98:CC:91:E3:21:41:1A:75:DE:F3:02:B4:7A:1A:2F:0C:B7:FE:DC:88"]
+      }
+    }]
