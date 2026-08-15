@@ -62,7 +62,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-extrabold text-[#D4AF37] mb-2">PHORGE</h1>
-          <p className="text-zinc-500">Trouvez votre entreprise ou votre apprenti(e) idéal(e).</p>
+          <p className="text-zinc-500">Trouvez votre entreprise ou votre apprenti·e idéal·e.</p>
         </div>
 
         {error && (

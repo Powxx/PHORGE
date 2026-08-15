@@ -175,7 +175,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
   };
 
   const demanderEssai = async () => {
-    const text = "📢 Le patron a fait une demande de période d'essai au CFA.";
+    const text = "📢 Le·la patron·ne a fait une demande de période d'essai au CFA.";
     await supabase.from('messages').insert({
       match_id: matchId,
       expediteur_id: currentUserId,
@@ -225,7 +225,7 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
   };
 
   const declarerContrat = async () => {
-    const text = "🎉 Le patron souhaite signer un contrat d'apprentissage !";
+    const text = "🎉 Le·la patron·ne souhaite signer un contrat d'apprentissage !";
     await supabase.from('messages').insert({
       match_id: matchId,
       expediteur_id: currentUserId,

@@ -29,6 +29,7 @@ export default function PushNotifications() {
   const pathnameRef = useRef(pathname);
   const userIdRef = useRef<string | null>(null);
   const roleRef = useRef<string | null>(null);
+  const schoolIdRef = useRef<string | null>(null);
   const domainRef = useRef<string | null>(null);
   const matchIdsRef = useRef<Set<string>>(new Set());
   const [showPrompt, setShowPrompt] = useState(false);
@@ -62,10 +63,11 @@ export default function PushNotifications() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, school_id")
         .eq("id", user.id)
         .single();
       roleRef.current = profile?.role || null;
+      schoolIdRef.current = profile?.school_id || null;
 
       // Fetch user domain
       let userDomaine: string | null = null;
@@ -105,6 +107,10 @@ export default function PushNotifications() {
             const targetId = (payload.new as any)?.id;
 
             if (newApproved && !oldApproved && targetId !== userIdRef.current) {
+              const targetSchoolId = (payload.new as any)?.school_id;
+              if (schoolIdRef.current && targetSchoolId && targetSchoolId !== schoolIdRef.current) {
+                return;
+              }
               const myRole = roleRef.current;
               const myDomain = domainRef.current;
               if (!myRole || !myDomain) return;
@@ -116,8 +122,8 @@ export default function PushNotifications() {
                   .eq("profile_id", targetId)
                   .single();
                 if (details && details.domaine === myDomain) {
-                  await showPushNotification("Nouveau salon disponible !", {
-                    body: `Le salon "${details.nom_entreprise}" a été approuvé.`,
+                  await showPushNotification("Nouvelle entreprise disponible !", {
+                    body: `L'entreprise "${details.nom_entreprise}" a été approuvée.`,
                     tag: `approved-profile-${targetId}`,
                     url: "/swipe",
                   });
@@ -178,8 +184,8 @@ export default function PushNotifications() {
                 .eq("id", newPatron.profile_id)
                 .single();
               if (prof?.is_approved) {
-                await showPushNotification("Nouveau salon disponible !", {
-                  body: `Le salon "${newPatron.nom_entreprise}" recrute.`,
+                await showPushNotification("Nouvelle entreprise disponible !", {
+                  body: `L'entreprise "${newPatron.nom_entreprise}" recrute.`,
                   tag: `new-profile-${newPatron.profile_id}`,
                   url: "/swipe",
                 });
@@ -229,7 +235,7 @@ export default function PushNotifications() {
             if (match.statut === "essai_demande" && (isParticipant || isAdmin)) {
               await showPushNotification("Demande de période d'essai", {
                 body: isAdmin
-                  ? "Un salon a demandé une période d'essai."
+                  ? "Une entreprise a demandé une période d'essai."
                   : "Une demande de période d'essai a été envoyée au CFA.",
                 tag: `essai-${match.id}`,
                 url: isAdmin ? "/admin" : `/chat/${match.id}`,
@@ -239,7 +245,7 @@ export default function PushNotifications() {
             if (match.statut === "contrat_demande" && (isParticipant || isAdmin)) {
               await showPushNotification("Demande de contrat", {
                 body: isAdmin
-                  ? "Un salon a déclaré une intention de contrat."
+                  ? "Une entreprise a déclaré une intention de contrat."
                   : "Une intention de contrat a été déclarée au CFA.",
                 tag: `contrat-${match.id}`,
                 url: isAdmin ? "/admin" : `/chat/${match.id}`,

@@ -40,7 +40,7 @@ export default function SwipePage() {
       const currentId = authData.user.id;
       setUserId(currentId);
 
-      const { data: profile } = await supabase.from('profiles').select('role, is_approved').eq('id', currentId).single();
+      const { data: profile } = await supabase.from('profiles').select('role, is_approved, school_id').eq('id', currentId).single();
       if (!profile) return;
 
       if (profile.role === 'admin_cfa') {
@@ -85,7 +85,8 @@ export default function SwipePage() {
         .from('profiles')
         .select('id')
         .eq('role', targetRole)
-        .eq('is_approved', true);
+        .eq('is_approved', true)
+        .eq('school_id', profile.school_id);
       const approvedIds = new Set((approvedRows || []).map(p => p.id));
 
       let results: (ProfileCard & { distance: number, candidateDistMax: number, originalDiplome?: string })[] = [];
@@ -167,7 +168,7 @@ export default function SwipePage() {
             </div>
             <h2 className="text-xl font-bold mb-2">Profil en attente de validation</h2>
             <p className="text-sm text-zinc-500 mb-6">
-              Un administrateur du CFA doit valider votre profil avant que vous puissiez swiper.
+              Un·e administrateur·rice du CFA doit valider votre profil avant que vous puissiez swiper.
             </p>
             <Link href="/profil" className="inline-block px-5 py-3 rounded-xl bg-[#D4AF37] text-white font-bold hover:bg-[#B8962E] transition-colors">
               Voir mon profil

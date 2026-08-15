@@ -42,7 +42,7 @@ export default function ProfilPage() {
         const { data } = await supabase.from('patrons_details').select('*').eq('profile_id', user.id).single();
         setProfileData(data);
       } else if (prof.role === 'admin_cfa') {
-        setProfileData({ prenom: 'Administrateur', nom: 'CFA', domaine: 'Supervision' });
+        setProfileData({ prenom: 'Administrateur·rice', nom: 'CFA', domaine: 'Supervision' });
       }
       setLoading(false);
     };
@@ -80,7 +80,13 @@ export default function ProfilPage() {
           <h2 className="text-2xl font-black mb-1">
             {role === 'apprenti' || role === 'admin_cfa' ? `${profileData?.prenom} ${profileData?.nom}` : profileData?.nom_entreprise}
           </h2>
-          <p className="text-[#D4AF37] font-semibold text-lg uppercase tracking-wider mb-8">{profileData?.domaine || role?.replace('_', ' ')}</p>
+          <p className="text-[#D4AF37] font-semibold text-lg uppercase tracking-wider mb-8">
+            {profileData?.domaine || (
+              role === 'apprenti' ? 'Apprenti·e' :
+              role === 'patron' ? 'Patron·ne' :
+              role === 'admin_cfa' ? 'Administrateur·rice CFA' : ''
+            )}
+          </p>
 
           <div className="text-left bg-zinc-50 dark:bg-zinc-950 rounded-2xl p-6 space-y-4">
             <h3 className="font-bold flex items-center gap-2 mb-4 text-lg"><FileText size={20} className="text-[#D4AF37]" /> Informations</h3>

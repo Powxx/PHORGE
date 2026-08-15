@@ -13,26 +13,41 @@ export default function AdminDashboard() {
   const [allMatches, setAllMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<{id: number, msg: string, type: string}[]>([]);
+  const [adminSchoolId, setAdminSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data?.user) {
         router.push('/login');
       } else {
-        supabase.from('profiles').select('role').eq('id', data.user.id).single().then(({ data: profile }) => {
+        supabase.from('profiles').select('role, school_id').eq('id', data.user.id).single().then(({ data: profile }) => {
           if (profile?.role !== 'admin_cfa') {
             router.push('/swipe');
+          } else {
+            setAdminSchoolId(profile.school_id || null);
           }
         });
       }
     });
   }, [router]);
 
-  const fetchData = async () => {
-    const { data: appData } = await supabase.from('apprentis_details').select('*');
-    const { data: patData } = await supabase.from('patrons_details').select('*');
-    const { data: matches } = await supabase.from('matches').select('*');
-    const { data: profiles } = await supabase.from('profiles').select('id, is_approved').in('role', ['apprenti', 'patron']);
+  const fetchData = async (schoolId: string) => {
+    if (!schoolId) return;
+    const { data: profiles } = await supabase.from('profiles').select('id, is_approved').eq('school_id', schoolId).in('role', ['apprenti', 'patron']);
+    const profileIds = (profiles || []).map(p => p.id);
+
+    if (profileIds.length === 0) {
+      setApprentis([]);
+      setPatrons([]);
+      setAllMatches([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: appData } = await supabase.from('apprentis_details').select('*').in('profile_id', profileIds);
+    const { data: patData } = await supabase.from('patrons_details').select('*').in('profile_id', profileIds);
+    const { data: matches } = await supabase.from('matches').select('*').in('apprenti_id', profileIds);
+
     const approvalMap: Record<string, boolean> = {};
     profiles?.forEach(p => { approvalMap[p.id] = !!p.is_approved; });
 
@@ -80,27 +95,28 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchData();
+    if (!adminSchoolId) return;
+    fetchData(adminSchoolId);
 
     // Listen to matches table for real-time alerts
     const channel = supabase.channel('admin_alerts')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, payload => {
         setAlerts(prev => [{ id: Date.now(), msg: "Nouveau Match !", type: 'info' }, ...prev]);
-        fetchData();
+        fetchData(adminSchoolId);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, payload => {
         if (payload.new.statut === 'essai_demande' && payload.old.statut !== 'essai_demande') {
-          setAlerts(prev => [{ id: Date.now(), msg: "Demande d'essai envoyée par un salon !", type: 'warning' }, ...prev]);
+          setAlerts(prev => [{ id: Date.now(), msg: "Demande d'essai envoyée par une entreprise !", type: 'warning' }, ...prev]);
         }
         if (payload.new.statut === 'contrat_demande' && payload.old.statut !== 'contrat_demande') {
           setAlerts(prev => [{ id: Date.now(), msg: "🎉 Intention de contrat déclarée !", type: 'success' }, ...prev]);
         }
-        fetchData();
+        fetchData(adminSchoolId);
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [adminSchoolId]);
 
   const exportCSV = () => {
     const headers = ["Nom", "Prenom", "Domaine", "Statut", "Stage", "Experience", "Diplome Souhaite", "Diplome Acquis"];
@@ -124,7 +140,7 @@ export default function AdminDashboard() {
   const handleApprove = async (profileId: string) => {
     try {
       await supabase.from('profiles').update({ is_approved: true }).eq('id', profileId);
-      fetchData();
+      if (adminSchoolId) fetchData(adminSchoolId);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la validation du compte.");
@@ -156,7 +172,7 @@ export default function AdminDashboard() {
 
       // 3. Rafraîchit les données localement
       setAlerts(prev => [{ id: Date.now(), msg: `Le profil de "${name}" a été supprimé avec succès.`, type: 'success' }, ...prev]);
-      fetchData();
+      if (adminSchoolId) fetchData(adminSchoolId);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la suppression du profil.");
@@ -195,7 +211,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
             <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
-              <Download size={16} /> Exporter Apprentis
+              <Download size={16} /> Exporter Apprentis·e·s
             </button>
             <div className="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-full flex items-center justify-center shrink-0">
               <ShieldCheck className="text-[#D4AF37]" size={24} />
@@ -207,11 +223,11 @@ export default function AdminDashboard() {
           {/* Liste Apprentis */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
             <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-between items-center">
-              <h2 className="font-bold text-xl">Suivi Apprentis ({apprentis.length})</h2>
+              <h2 className="font-bold text-xl">Suivi Apprentis·e·s ({apprentis.length})</h2>
             </div>
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800 flex-1 overflow-y-auto max-h-[600px]">
               {loading && <div className="p-6 text-zinc-500">Chargement...</div>}
-              {!loading && apprentis.length === 0 && <div className="p-6 text-zinc-500">Aucun apprenti.</div>}
+              {!loading && apprentis.length === 0 && <div className="p-6 text-zinc-500">Aucun·e apprenti·e.</div>}
               {apprentis.map(a => (
                 <Link key={a.profile_id} href={`/admin/profil/${a.profile_id}?role=apprenti`} className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group">
                   <div>
@@ -224,7 +240,7 @@ export default function AdminDashboard() {
                         ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
                         : 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
                     }`}>
-                      {a.is_approved ? 'Validé' : 'En attente'}
+                      {a.is_approved ? 'Validé·e' : 'En attente'}
                     </span>
                     {!a.is_approved && (
                       <button onClick={(e) => { e.preventDefault(); handleApprove(a.profile_id); }} className="text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 bg-[#D4AF37] text-white font-bold rounded-lg hover:bg-[#B8962E] transition-colors shadow-sm shrink-0">
@@ -255,11 +271,11 @@ export default function AdminDashboard() {
           {/* Liste Patrons */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
             <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
-              <h2 className="font-bold text-xl">Salons inscrits ({patrons.length})</h2>
+              <h2 className="font-bold text-xl">Entreprises inscrites ({patrons.length})</h2>
             </div>
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800 flex-1 overflow-y-auto max-h-[600px]">
               {loading && <div className="p-6 text-zinc-500">Chargement...</div>}
-              {!loading && patrons.length === 0 && <div className="p-6 text-zinc-500">Aucun salon.</div>}
+              {!loading && patrons.length === 0 && <div className="p-6 text-zinc-500">Aucune entreprise.</div>}
               {patrons.map(p => (
                 <Link key={p.profile_id} href={`/admin/profil/${p.profile_id}?role=patron`} className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group">
                   <div>
@@ -272,7 +288,7 @@ export default function AdminDashboard() {
                         ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400'
                         : 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
                     }`}>
-                      {p.is_approved ? 'Validé' : 'En attente'}
+                      {p.is_approved ? 'Validé·e' : 'En attente'}
                     </span>
                     {!p.is_approved && (
                       <button onClick={(e) => { e.preventDefault(); handleApprove(p.profile_id); }} className="text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 bg-[#D4AF37] text-white font-bold rounded-lg hover:bg-[#B8962E] transition-colors shadow-sm shrink-0">
@@ -308,8 +324,8 @@ export default function AdminDashboard() {
             <table className="w-full text-left text-sm">
               <thead className="bg-zinc-50 dark:bg-zinc-950/50 text-zinc-500 font-medium">
                 <tr>
-                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Apprenti</th>
-                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Salon / Patron</th>
+                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Apprenti·e</th>
+                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Entreprise / Patron·ne</th>
                   <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Statut actuel</th>
                   <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Date du Match</th>
                   <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Action</th>
@@ -337,7 +353,7 @@ export default function AdminDashboard() {
                     <td className="p-4 text-zinc-500">{new Date(m.created_at).toLocaleDateString()}</td>
                     <td className="p-4">
                       <Link href={`/admin/profil/${m.apprenti_id}?role=apprenti`} className="text-[#D4AF37] hover:underline font-medium text-xs">
-                        Voir apprenti
+                        Voir l'apprenti·e
                       </Link>
                     </td>
                   </tr>

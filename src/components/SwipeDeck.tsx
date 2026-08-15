@@ -211,7 +211,7 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
                 <Heart size={40} className="text-[#D4AF37] fill-[#D4AF37]" />
               </div>
               <h2 className="text-3xl font-extrabold mb-2">Match !</h2>
-              <p className="text-zinc-600 dark:text-zinc-400 mb-8">Vous et <span className="font-bold text-zinc-900 dark:text-zinc-100">{matchData.nom}</span> êtes intéressés.</p>
+              <p className="text-zinc-600 dark:text-zinc-400 mb-8">Vous et <span className="font-bold text-zinc-900 dark:text-zinc-100">{matchData.nom}</span> êtes intéressé·e·s.</p>
 
               <div className="space-y-3">
                 <button

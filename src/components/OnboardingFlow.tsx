@@ -43,6 +43,9 @@ export default function OnboardingFlow() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
 
+  const [schools, setSchools] = useState<{ id: string, name: string }[]>([]);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (data?.user) {
@@ -54,6 +57,18 @@ export default function OnboardingFlow() {
       }
       else router.push('/login');
     });
+
+    const fetchSchools = async () => {
+      const { data } = await supabase.from('schools').select('id, name');
+      if (data) {
+        setSchools(data);
+        if (data.length > 0) {
+          const defaultSchool = data.find(s => s.name === 'CFA Alès');
+          setSelectedSchoolId(defaultSchool ? defaultSchool.id : data[0].id);
+        }
+      }
+    };
+    fetchSchools();
   }, [router]);
 
   const handleLocate = () => {
@@ -126,12 +141,12 @@ export default function OnboardingFlow() {
     setSaving(true);
 
     try {
-      await supabase.from('profiles').update({ role }).eq('id', userId);
+      await supabase.from('profiles').update({ role, school_id: selectedSchoolId }).eq('id', userId);
 
       if (role === 'patron') {
         await supabase.from('patrons_details').insert({
           profile_id: userId,
-          nom_entreprise: nomEntreprise || 'Mon Salon',
+          nom_entreprise: nomEntreprise || 'Mon Entreprise',
           domaine: domaine || 'coiffure',
           adresse: adresse,
           distance_max: distance,
@@ -179,20 +194,39 @@ export default function OnboardingFlow() {
     return (
       <div className="max-w-md mx-auto min-h-screen flex flex-col justify-center p-6 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
         <h1 className="text-3xl font-bold mb-8 text-center">Que recherchez-vous ?</h1>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-zinc-500 mb-2">Sélectionnez votre CFA / École</label>
+          <select 
+            value={selectedSchoolId} 
+            onChange={(e) => setSelectedSchoolId(e.target.value)}
+            className="w-full p-4 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-[#D4AF37] text-zinc-900 dark:text-zinc-100 font-medium"
+            required
+          >
+            {schools.length === 0 ? (
+              <option value="">Chargement des écoles...</option>
+            ) : (
+              schools.map((school) => (
+                <option key={school.id} value={school.id}>{school.name}</option>
+              ))
+            )}
+          </select>
+        </div>
+
         <div className="space-y-4">
           <button
             onClick={() => { setRole('apprenti'); nextStep(); }}
             className="w-full p-6 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 flex flex-col items-center gap-4 hover:border-[#D4AF37] hover:bg-[#D4AF37]/5 transition-all">
             <User size={48} className="text-[#D4AF37]" />
-            <span className="font-bold text-xl">Je cherche un salon</span>
+            <span className="font-bold text-xl">Je cherche une entreprise</span>
             <span className="text-sm text-zinc-500">Pour mon apprentissage</span>
           </button>
           <button
             onClick={() => { setRole('patron'); nextStep(); }}
             className="w-full p-6 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 flex flex-col items-center gap-4 hover:border-[#D4AF37] hover:bg-[#D4AF37]/5 transition-all">
             <Building2 size={48} className="text-[#D4AF37]" />
-            <span className="font-bold text-xl">Je cherche un apprenti</span>
-            <span className="text-sm text-zinc-500">Pour mon salon / institut</span>
+            <span className="font-bold text-xl">Je cherche un·e apprenti·e</span>
+            <span className="text-sm text-zinc-500">Pour mon entreprise</span>
           </button>
         </div>
       </div>
@@ -204,13 +238,13 @@ export default function OnboardingFlow() {
     return (
       <div className="max-w-md mx-auto min-h-screen flex flex-col p-6 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
         <div className="flex-1 flex flex-col justify-center py-10">
-          <h1 className="text-3xl font-bold mb-4">Parlez-nous de votre salon</h1>
-          <p className="text-zinc-500 mb-8">Pour attirer les meilleurs apprentis.</p>
+          <h1 className="text-3xl font-bold mb-4">Parlez-nous de votre entreprise</h1>
+          <p className="text-zinc-500 mb-8">Pour attirer les meilleur·e·s apprenti·e·s.</p>
 
           <div className="space-y-4 overflow-y-auto pb-4">
             <div>
               <label className="block text-sm font-medium mb-2">Nom de l'entreprise</label>
-              <input type="text" value={nomEntreprise} onChange={e => setNomEntreprise(e.target.value)} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Ex: Salon de l'Élégance" />
+              <input type="text" value={nomEntreprise} onChange={e => setNomEntreprise(e.target.value)} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Ex: Entreprise de l'Élégance" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Domaine d'activité</label>
@@ -221,7 +255,7 @@ export default function OnboardingFlow() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Présentation / Profil recherché</label>
-              <textarea value={presentation} onChange={e => setPresentation(e.target.value)} rows={4} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Décrivez votre salon et l'apprenti idéal..." />
+              <textarea value={presentation} onChange={e => setPresentation(e.target.value)} rows={4} className="w-full p-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Décrivez votre entreprise et l'apprenti·e idéal·e..." />
             </div>
 
             <div>
@@ -235,10 +269,10 @@ export default function OnboardingFlow() {
             </div>
 
             <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 mt-4">
-              <label className="block text-sm font-medium mb-2">Photo du salon (Optionnelle)</label>
+              <label className="block text-sm font-medium mb-2">Photo de l'entreprise (Optionnelle)</label>
               <div className="flex items-center gap-4">
                 {photoUrl ? (
-                  <img src={photoUrl} alt="Salon" className="w-16 h-16 rounded-xl object-cover" />
+                  <img src={photoUrl} alt="Entreprise" className="w-16 h-16 rounded-xl object-cover" />
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
                     <Camera size={24} />
@@ -269,7 +303,7 @@ export default function OnboardingFlow() {
 
             <div className="pt-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Rechercher des apprentis dans un rayon de</span>
+                <span className="text-sm font-medium">Rechercher des apprenti·e·s dans un rayon de</span>
                 <span className="font-bold text-[#D4AF37]">{distance} km</span>
               </div>
               <input type="range" min="5" max="100" value={distance} onChange={e => setDistance(Number(e.target.value))} className="w-full accent-[#D4AF37] h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg cursor-pointer" />
@@ -424,7 +458,7 @@ export default function OnboardingFlow() {
             <h1 className="text-3xl font-bold mb-4">Pourquoi moi ?</h1>
             <p className="text-zinc-500 mb-2">Exprimez votre motivation, ce qui vous passionne et vos qualités.</p>
             <div>
-              <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={6} className="w-full p-4 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37] resize-none" placeholder="Je suis passionné par la coiffure depuis toujours. Je suis créatif, ponctuel et j'ai soif d'apprendre..." />
+              <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={6} className="w-full p-4 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37] resize-none" placeholder="Je suis passionné·e par la coiffure depuis toujours. Je suis créatif·ve, ponctuel·le et j'ai soif d'apprendre..." />
             </div>
           </div>
         )}

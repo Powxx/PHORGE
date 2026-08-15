@@ -211,7 +211,7 @@ export default function EditProfilPage() {
       <form onSubmit={handleSave} className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 shadow-sm border border-zinc-200 dark:border-zinc-800 space-y-6">
         
         <div>
-          <label className="block text-sm font-medium mb-2">Photo ({role === 'patron' ? 'Salon' : 'Profil'})</label>
+          <label className="block text-sm font-medium mb-2">Photo ({role === 'patron' ? 'Entreprise' : 'Profil'})</label>
           <div className="flex items-center gap-4">
             {photoUrl ? (
               <img src={photoUrl} alt="Profil" className="w-16 h-16 rounded-xl object-cover" />
@@ -241,7 +241,7 @@ export default function EditProfilPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Présentation / Profil recherché</label>
-              <textarea value={presentation} onChange={e=>setPresentation(e.target.value)} rows={4} className="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Décrivez votre salon..." />
+              <textarea value={presentation} onChange={e=>setPresentation(e.target.value)} rows={4} className="w-full p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" placeholder="Décrivez votre entreprise..." />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Diplôme recherché</label>
