@@ -18,13 +18,13 @@ export default function LoginPage() {
     const checkOnboarding = async (userId: string) => {
       const { data: apprenti } = await supabase.from('apprentis_details').select('profile_id').eq('profile_id', userId).single();
       if (apprenti) return true;
-      
+
       const { data: patron } = await supabase.from('patrons_details').select('profile_id').eq('profile_id', userId).single();
       if (patron) return true;
-      
+
       return false;
     };
-    
+
     if (isSignUp) {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) setError(error.message);
@@ -62,7 +62,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-extrabold text-[#D4AF37] mb-2">PHORGE</h1>
-          <p className="text-zinc-500">Trouvez votre salon ou votre apprenti idéal.</p>
+          <p className="text-zinc-500">Trouvez votre entreprise ou votre apprenti(e) idéal(e).</p>
         </div>
 
         {error && (
@@ -74,29 +74,29 @@ export default function LoginPage() {
         <form onSubmit={handleAuth} className="space-y-4">
           <div className="relative">
             <Mail className="absolute left-3 top-3 text-zinc-400" size={20} />
-            <input 
-              type="email" 
-              placeholder="Email" 
+            <input
+              type="email"
+              placeholder="Email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" 
+              className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]"
             />
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-3 text-zinc-400" size={20} />
-            <input 
-              type="password" 
-              placeholder="Mot de passe" 
+            <input
+              type="password"
+              placeholder="Mot de passe"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]" 
+              className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-900 rounded-xl outline-none focus:ring-2 focus:ring-[#D4AF37]"
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-3 mt-4 rounded-xl bg-[#D4AF37] text-white font-bold hover:bg-[#B8962E] transition-colors shadow-lg shadow-[#D4AF37]/20"
           >
@@ -105,7 +105,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <button 
+          <button
             onClick={() => setIsSignUp(!isSignUp)}
             className="text-sm text-zinc-500 hover:text-[#D4AF37] transition-colors"
           >

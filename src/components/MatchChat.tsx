@@ -182,6 +182,8 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
       texte: text
     });
     await supabase.from('matches').update({ statut: 'essai_demande' }).eq('id', matchId);
+    
+    // Notify apprentice
     if (recipientId && recipientId !== currentUserId) {
       fetch('/api/push/notify', {
         method: 'POST',
@@ -194,6 +196,31 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         })
       }).catch(err => console.error("Error triggering push notification:", err));
     }
+
+    // Notify all CFA admins
+    try {
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin_cfa');
+      if (admins) {
+        admins.forEach((admin: any) => {
+          fetch('/api/push/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: admin.id,
+              title: `PHORGE CFA - Demande d'essai`,
+              body: `${senderName} demande une période d'essai.`,
+              url: `/admin`
+            })
+          }).catch(err => console.error("Error triggering admin push notification:", err));
+        });
+      }
+    } catch (err) {
+      console.error("Failed to notify admins:", err);
+    }
+
     alert("Demande envoyée au CFA !");
   };
 
@@ -205,6 +232,8 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
       texte: text
     });
     await supabase.from('matches').update({ statut: 'contrat_demande' }).eq('id', matchId);
+    
+    // Notify apprentice
     if (recipientId && recipientId !== currentUserId) {
       fetch('/api/push/notify', {
         method: 'POST',
@@ -217,6 +246,31 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
         })
       }).catch(err => console.error("Error triggering push notification:", err));
     }
+
+    // Notify all CFA admins
+    try {
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin_cfa');
+      if (admins) {
+        admins.forEach((admin: any) => {
+          fetch('/api/push/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: admin.id,
+              title: `PHORGE CFA - Intention de contrat`,
+              body: `${senderName} souhaite signer un contrat.`,
+              url: `/admin`
+            })
+          }).catch(err => console.error("Error triggering admin push notification:", err));
+        });
+      }
+    } catch (err) {
+      console.error("Failed to notify admins:", err);
+    }
+
     alert("Intention de contrat déclarée au CFA !");
   };
 

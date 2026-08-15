@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ProfileMap from '@/components/ProfileMap';
 import { subscribeUserToPush } from '@/lib/notifications';
+import PWAInstallSection from '@/components/PWAInstallSection';
 
 export default function ProfilPage() {
   const [profileData, setProfileData] = useState<any>(null);
@@ -112,6 +113,9 @@ export default function ProfilPage() {
               adresse={profileData.adresse}
             />
           )}
+
+          {/* Section Installation PWA */}
+          <PWAInstallSection />
 
           {/* Configuration des Notifications */}
           <div className="mt-6 text-left bg-zinc-50 dark:bg-zinc-950 rounded-2xl p-6 border border-zinc-200 dark:border-zinc-800">
