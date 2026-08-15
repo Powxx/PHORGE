@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, ChevronRight, Download, Bell, Trash2 } from 'lucide-react';
+import { ShieldCheck, ChevronRight, Download, Bell, Trash2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -14,16 +14,21 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<{id: number, msg: string, type: string}[]>([]);
   const [adminSchoolId, setAdminSchoolId] = useState<string | null>(null);
+  const [adminsList, setAdminsList] = useState<any[]>([]);
+  const [isApprovedAdmin, setIsApprovedAdmin] = useState<boolean | null>(null);
+  const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data?.user) {
         router.push('/login');
       } else {
-        supabase.from('profiles').select('role, school_id').eq('id', data.user.id).single().then(({ data: profile }) => {
+        setCurrentAdminId(data.user.id);
+        supabase.from('profiles').select('role, school_id, is_approved').eq('id', data.user.id).single().then(({ data: profile }) => {
           if (profile?.role !== 'admin_cfa') {
             router.push('/swipe');
           } else {
+            setIsApprovedAdmin(!!profile.is_approved);
             setAdminSchoolId(profile.school_id || null);
           }
         });
@@ -33,8 +38,13 @@ export default function AdminDashboard() {
 
   const fetchData = async (schoolId: string) => {
     if (!schoolId) return;
-    const { data: profiles } = await supabase.from('profiles').select('id, is_approved').eq('school_id', schoolId).in('role', ['apprenti', 'patron']);
-    const profileIds = (profiles || []).map(p => p.id);
+    const { data: profiles } = await supabase.from('profiles').select('id, is_approved, role, email').eq('school_id', schoolId).in('role', ['apprenti', 'patron', 'admin_cfa']);
+    
+    const apprenticesAndPatrons = (profiles || []).filter(p => p.role !== 'admin_cfa');
+    const profileIds = apprenticesAndPatrons.map(p => p.id);
+
+    const admins = (profiles || []).filter(p => p.role === 'admin_cfa');
+    setAdminsList(admins);
 
     if (profileIds.length === 0) {
       setApprentis([]);
@@ -178,6 +188,33 @@ export default function AdminDashboard() {
       alert("Erreur lors de la suppression du profil.");
     }
   };
+
+  if (isApprovedAdmin === false) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-xl">
+          <div className="w-16 h-16 mx-auto bg-[#D4AF37]/10 rounded-full flex items-center justify-center mb-6">
+            <Lock size={32} className="text-[#D4AF37]" />
+          </div>
+          <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-4">
+            Compte en attente de validation 🔑
+          </h2>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-6 leading-relaxed">
+            Votre compte école a bien été créé. Cependant, il doit être validé par un·e autre membre de votre établissement avant que vous ne puissiez accéder au tableau de bord.
+          </p>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push('/login');
+            }}
+            className="py-3 px-6 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold rounded-2xl transition-colors"
+          >
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 relative">
@@ -359,6 +396,65 @@ export default function AdminDashboard() {
                   </tr>
                 ))}
               </tbody>
+             {/* Gestion des Membres de l'école */}
+        <div className="mt-8 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 flex justify-between items-center">
+            <div>
+              <h2 className="font-bold text-xl">Membres de l'école ({adminsList.length})</h2>
+              <p className="text-zinc-500 text-sm">Gestion des droits d'accès de votre établissement</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 text-xs font-bold uppercase tracking-wider">
+                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Email</th>
+                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Statut</th>
+                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Date de création</th>
+                  <th className="p-4 border-b border-zinc-200 dark:border-zinc-800">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                {adminsList.filter(a => a.id !== currentAdminId).length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center text-zinc-500">Aucun autre membre dans votre école.</td>
+                  </tr>
+                )}
+                {adminsList.filter(a => a.id !== currentAdminId).map(admin => (
+                  <tr key={admin.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                    <td className="p-4 font-bold text-zinc-900 dark:text-zinc-100">{admin.email || admin.id}</td>
+                    <td className="p-4">
+                      <span className={`text-xs font-bold px-2 py-1 border rounded-md ${
+                        admin.is_approved ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' :
+                        'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400'
+                      }`}>
+                        {admin.is_approved ? 'Validé' : 'En attente'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-zinc-500 text-sm">{new Date(admin.created_at).toLocaleDateString()}</td>
+                    <td className="p-4 flex items-center gap-2">
+                      {!admin.is_approved && (
+                        <button
+                          onClick={() => handleApprove(admin.id)}
+                          className="px-3 py-1 bg-[#D4AF37] hover:bg-[#B8962E] text-white font-bold rounded-lg text-xs transition-colors shadow-sm"
+                        >
+                          Approuver
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteProfile(admin.id, admin.email || 'Membre')}
+                        className="p-1 text-zinc-400 hover:text-red-500 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        title="Supprimer le membre"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>>
             </table>
           </div>
         </div>

@@ -105,7 +105,7 @@ export default function Sidebar() {
   ];
 
   if (isAdmin) {
-    links.push({ href: '/admin', label: 'Admin', icon: ShieldCheck });
+    links.push({ href: '/admin', label: 'École', icon: ShieldCheck });
   }
 
   return (

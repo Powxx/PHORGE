@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Camera, MapPin, ChevronRight, Briefcase, User, Building2, LocateFixed } from 'lucide-react';
+import { Camera, MapPin, ChevronRight, Briefcase, User, Building2, LocateFixed, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 
@@ -9,7 +9,7 @@ export default function OnboardingFlow() {
   const [userId, setUserId] = useState<string | null>(null);
 
   const [step, setStep] = useState(0);
-  const [role, setRole] = useState<'apprenti' | 'patron' | null>(null);
+  const [role, setRole] = useState<'apprenti' | 'patron' | 'admin_cfa' | null>(null);
 
   // Patron State
   const [nomEntreprise, setNomEntreprise] = useState('');
@@ -141,7 +141,7 @@ export default function OnboardingFlow() {
     setSaving(true);
 
     try {
-      await supabase.from('profiles').update({ role, school_id: selectedSchoolId }).eq('id', userId);
+      await supabase.from('profiles').update({ role, school_id: selectedSchoolId, is_approved: false }).eq('id', userId);
 
       if (role === 'patron') {
         await supabase.from('patrons_details').insert({
@@ -156,7 +156,7 @@ export default function OnboardingFlow() {
           presentation: presentation,
           diplome_recherche: diplomeRecherche
         });
-      } else {
+      } else if (role === 'apprenti') {
         await supabase.from('apprentis_details').insert({
           profile_id: userId,
           nom: nom || 'Apprenti',
@@ -179,7 +179,11 @@ export default function OnboardingFlow() {
         });
       }
 
-      router.push('/swipe');
+      if (role === 'admin_cfa') {
+        router.push('/admin');
+      } else {
+        router.push('/swipe');
+      }
     } catch (e) {
       console.error(e);
       alert("Erreur lors de la sauvegarde.");
@@ -227,6 +231,38 @@ export default function OnboardingFlow() {
             <Building2 size={48} className="text-[#D4AF37]" />
             <span className="font-bold text-xl">Je cherche un·e apprenti·e</span>
             <span className="text-sm text-zinc-500">Pour mon entreprise</span>
+          </button>
+          <button
+            onClick={() => { setRole('admin_cfa'); nextStep(); }}
+            className="w-full p-6 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 flex flex-col items-center gap-4 hover:border-[#D4AF37] hover:bg-[#D4AF37]/5 transition-all">
+            <ShieldCheck size={48} className="text-[#D4AF37]" />
+            <span className="font-bold text-xl">Je suis une école</span>
+            <span className="text-sm text-zinc-500">Pour gérer mon établissement</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin Flow
+  if (role === 'admin_cfa') {
+    const schoolName = schools.find(s => s.id === selectedSchoolId)?.name || "l'école sélectionnée";
+    return (
+      <div className="max-w-md mx-auto min-h-screen flex flex-col justify-center p-6 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
+        <div className="w-16 h-16 mx-auto mb-6 bg-[#D4AF37]/15 rounded-full flex items-center justify-center animate-pulse">
+          <ShieldCheck className="text-[#D4AF37]" size={32} />
+        </div>
+        <h1 className="text-2xl font-black mb-4 text-center">Inscription École</h1>
+        <p className="text-zinc-500 dark:text-zinc-400 text-sm text-center mb-8 leading-relaxed">
+          Vous allez vous inscrire en tant qu'école pour <strong>{schoolName}</strong>.<br />
+          Votre compte devra être validé par un·e autre membre de cet établissement avant d'accéder au tableau de bord.
+        </p>
+        <div className="flex gap-4">
+          <button onClick={() => { setRole(null); setStep(0); }} className="flex-1 py-4 bg-zinc-100 dark:bg-zinc-900 font-bold rounded-2xl transition-colors">
+            Retour
+          </button>
+          <button onClick={handleSave} disabled={saving} className="flex-1 py-4 bg-[#D4AF37] hover:bg-[#B8962E] text-white font-bold rounded-2xl transition-colors shadow-lg shadow-[#D4AF37]/20">
+            {saving ? 'Sauvegarde...' : 'Confirmer'}
           </button>
         </div>
       </div>
