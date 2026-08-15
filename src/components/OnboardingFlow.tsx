@@ -141,10 +141,11 @@ export default function OnboardingFlow() {
     setSaving(true);
 
     try {
-      await supabase.from('profiles').update({ role, school_id: selectedSchoolId, is_approved: false }).eq('id', userId);
+      const { error: profileError } = await supabase.from('profiles').update({ role, school_id: selectedSchoolId, is_approved: false }).eq('id', userId);
+      if (profileError) throw profileError;
 
       if (role === 'patron') {
-        await supabase.from('patrons_details').insert({
+        const { error: patronError } = await supabase.from('patrons_details').insert({
           profile_id: userId,
           nom_entreprise: nomEntreprise || 'Mon Entreprise',
           domaine: domaine || 'coiffure',
@@ -156,8 +157,9 @@ export default function OnboardingFlow() {
           presentation: presentation,
           diplome_recherche: diplomeRecherche
         });
+        if (patronError) throw patronError;
       } else if (role === 'apprenti') {
-        await supabase.from('apprentis_details').insert({
+        const { error: apprentiError } = await supabase.from('apprentis_details').insert({
           profile_id: userId,
           nom: nom || 'Apprenti',
           prenom: prenom || 'Nouveau',
@@ -177,6 +179,7 @@ export default function OnboardingFlow() {
           longitude: longitude,
           photo_profil: photoUrl
         });
+        if (apprentiError) throw apprentiError;
       }
 
       if (role === 'admin_cfa') {

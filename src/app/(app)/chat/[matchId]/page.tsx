@@ -24,8 +24,14 @@ export default function ChatPage() {
       }
       setUserId(authData.user.id);
       
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', authData.user.id).single();
-      if (profile) setUserRole(profile.role);
+      const { data: profile } = await supabase.from('profiles').select('role, is_approved').eq('id', authData.user.id).single();
+      if (profile) {
+        setUserRole(profile.role);
+        if (!profile.is_approved) {
+          router.push('/messages');
+          return;
+        }
+      }
       
       setLoading(false);
     };
