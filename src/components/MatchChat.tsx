@@ -26,10 +26,13 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
     fetchRecipient();
   }, [matchId, currentUserId]);
 
+  const [schoolId, setSchoolId] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchSenderName = async () => {
-      const { data: prof } = await supabase.from('profiles').select('role').eq('id', currentUserId).single();
+      const { data: prof } = await supabase.from('profiles').select('role, school_id').eq('id', currentUserId).single();
       if (prof) {
+        setSchoolId(prof.school_id || null);
         const table = prof.role === 'apprenti' ? 'apprentis_details' : 'patrons_details';
         const { data: details } = await supabase.from(table).select('*').eq('profile_id', currentUserId).single();
         if (details) {
@@ -197,25 +200,28 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
       }).catch(err => console.error("Error triggering push notification:", err));
     }
 
-    // Notify all CFA admins
+    // Notify same school CFA admins
     try {
-      const { data: admins } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'admin_cfa');
-      if (admins) {
-        admins.forEach((admin: any) => {
-          fetch('/api/push/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: admin.id,
-              title: `PHORGE CFA - Demande d'essai`,
-              body: `${senderName} demande une période d'essai.`,
-              url: `/admin`
-            })
-          }).catch(err => console.error("Error triggering admin push notification:", err));
-        });
+      if (schoolId) {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin_cfa')
+          .eq('school_id', schoolId);
+        if (admins) {
+          admins.forEach((admin: any) => {
+            fetch('/api/push/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: admin.id,
+                title: `PHORGE CFA - Demande d'essai`,
+                body: `${senderName} demande une période d'essai.`,
+                url: `/admin`
+              })
+            }).catch(err => console.error("Error triggering admin push notification:", err));
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to notify admins:", err);
@@ -247,25 +253,28 @@ export default function MatchChat({ matchId, currentUserId, userRole }: { matchI
       }).catch(err => console.error("Error triggering push notification:", err));
     }
 
-    // Notify all CFA admins
+    // Notify same school CFA admins
     try {
-      const { data: admins } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'admin_cfa');
-      if (admins) {
-        admins.forEach((admin: any) => {
-          fetch('/api/push/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: admin.id,
-              title: `PHORGE CFA - Intention de contrat`,
-              body: `${senderName} souhaite signer un contrat.`,
-              url: `/admin`
-            })
-          }).catch(err => console.error("Error triggering admin push notification:", err));
-        });
+      if (schoolId) {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin_cfa')
+          .eq('school_id', schoolId);
+        if (admins) {
+          admins.forEach((admin: any) => {
+            fetch('/api/push/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: admin.id,
+                title: `PHORGE CFA - Intention de contrat`,
+                body: `${senderName} souhaite signer un contrat.`,
+                url: `/admin`
+              })
+            }).catch(err => console.error("Error triggering admin push notification:", err));
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to notify admins:", err);
