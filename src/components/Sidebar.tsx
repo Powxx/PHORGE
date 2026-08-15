@@ -21,7 +21,7 @@ export default function Sidebar() {
       if (user) {
         setCurrentUser(user);
         const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-        if (data?.role === 'admin_cfa') {
+        if (data?.role === 'admin_cfa' || data?.role === 'super_admin') {
           setIsAdmin(true);
         }
       }

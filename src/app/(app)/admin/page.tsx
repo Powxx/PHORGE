@@ -17,6 +17,11 @@ export default function AdminDashboard() {
   const [adminsList, setAdminsList] = useState<any[]>([]);
   const [isApprovedAdmin, setIsApprovedAdmin] = useState<boolean | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [allSchools, setAllSchools] = useState<any[]>([]);
+  const [viewedSchoolId, setViewedSchoolId] = useState<string>('');
+
+  const activeSchoolId = userRole === 'super_admin' ? viewedSchoolId : adminSchoolId;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -25,16 +30,30 @@ export default function AdminDashboard() {
       } else {
         setCurrentAdminId(data.user.id);
         supabase.from('profiles').select('role, school_id, is_approved').eq('id', data.user.id).single().then(({ data: profile }) => {
-          if (profile?.role !== 'admin_cfa') {
+          if (profile?.role !== 'admin_cfa' && profile?.role !== 'super_admin') {
             router.push('/swipe');
           } else {
-            setIsApprovedAdmin(!!profile.is_approved);
+            setUserRole(profile.role || null);
+            setIsApprovedAdmin(profile.role === 'super_admin' ? true : !!profile.is_approved);
             setAdminSchoolId(profile.school_id || null);
           }
         });
       }
     });
   }, [router]);
+
+  useEffect(() => {
+    if (userRole === 'super_admin') {
+      supabase.from('schools').select('id, name').then(({ data }) => {
+        if (data) {
+          setAllSchools(data);
+          if (data.length > 0) {
+            setViewedSchoolId(data[0].id);
+          }
+        }
+      });
+    }
+  }, [userRole]);
 
   const fetchData = async (schoolId: string) => {
     if (!schoolId) return;
@@ -105,14 +124,14 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (!adminSchoolId) return;
-    fetchData(adminSchoolId);
+    if (!activeSchoolId) return;
+    fetchData(activeSchoolId);
 
     // Listen to matches table for real-time alerts
     const channel = supabase.channel('admin_alerts')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, payload => {
         setAlerts(prev => [{ id: Date.now(), msg: "Nouveau Match !", type: 'info' }, ...prev]);
-        fetchData(adminSchoolId);
+        fetchData(activeSchoolId);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, payload => {
         if (payload.new.statut === 'essai_demande' && payload.old.statut !== 'essai_demande') {
@@ -121,12 +140,12 @@ export default function AdminDashboard() {
         if (payload.new.statut === 'contrat_demande' && payload.old.statut !== 'contrat_demande') {
           setAlerts(prev => [{ id: Date.now(), msg: "🎉 Intention de contrat déclarée !", type: 'success' }, ...prev]);
         }
-        fetchData(adminSchoolId);
+        fetchData(activeSchoolId);
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [adminSchoolId]);
+  }, [activeSchoolId]);
 
   const exportCSV = () => {
     const headers = ["Nom", "Prenom", "Domaine", "Statut", "Stage", "Experience", "Diplome Souhaite", "Diplome Acquis"];
@@ -150,7 +169,7 @@ export default function AdminDashboard() {
   const handleApprove = async (profileId: string) => {
     try {
       await supabase.from('profiles').update({ is_approved: true }).eq('id', profileId);
-      if (adminSchoolId) fetchData(adminSchoolId);
+      if (activeSchoolId) fetchData(activeSchoolId);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la validation du compte.");
@@ -182,7 +201,7 @@ export default function AdminDashboard() {
 
       // 3. Rafraîchit les données localement
       setAlerts(prev => [{ id: Date.now(), msg: `Le profil de "${name}" a été supprimé avec succès.`, type: 'success' }, ...prev]);
-      if (adminSchoolId) fetchData(adminSchoolId);
+      if (activeSchoolId) fetchData(activeSchoolId);
     } catch (err) {
       console.error(err);
       alert("Erreur lors de la suppression du profil.");
@@ -255,6 +274,24 @@ export default function AdminDashboard() {
             </div>
           </div>
         </header>
+
+        {userRole === 'super_admin' && (
+          <div className="mb-8 p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div>
+              <span className="font-extrabold text-zinc-900 dark:text-zinc-100 text-lg block mb-1">Mode Super Administrateur 👑</span>
+              <span className="text-sm text-zinc-500">Vous avez la visibilité globale et pouvez valider les comptes d'autres écoles.</span>
+            </div>
+            <select
+              value={viewedSchoolId}
+              onChange={(e) => setViewedSchoolId(e.target.value)}
+              className="w-full sm:w-auto p-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 font-bold outline-none focus:ring-2 focus:ring-[#D4AF37]"
+            >
+              {allSchools.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Liste Apprentis */}
@@ -437,7 +474,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="p-4 text-zinc-500 text-sm">{new Date(admin.created_at).toLocaleDateString()}</td>
                     <td className="p-4 flex items-center gap-2">
-                      {!admin.is_approved && (
+                      {!admin.is_approved && userRole === 'super_admin' && (
                         <button
                           onClick={() => handleApprove(admin.id)}
                           className="px-3 py-1 bg-[#D4AF37] hover:bg-[#B8962E] text-white font-bold rounded-lg text-xs transition-colors shadow-sm"
