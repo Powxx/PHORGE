@@ -41,7 +41,7 @@ export default function LoginPage() {
       if (error) setError(error.message);
       else if (data.user) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
-        if (profile?.role === 'admin_cfa') {
+        if (profile?.role === 'admin_cfa' || profile?.role === 'super_admin') {
           window.location.href = '/admin';
           return;
         }

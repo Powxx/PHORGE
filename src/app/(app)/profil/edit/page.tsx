@@ -8,7 +8,7 @@ import Link from 'next/link';
 export default function EditProfilPage() {
   const router = useRouter();
   const [userId, setUserId] = useState('');
-  const [role, setRole] = useState<'apprenti'|'patron'|'admin_cfa'|null>(null);
+  const [role, setRole] = useState<'apprenti'|'patron'|'admin_cfa'|'super_admin'|null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -197,7 +197,7 @@ export default function EditProfilPage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-zinc-500">Chargement...</div>;
-  if (role === 'admin_cfa') return <div className="min-h-screen p-6 text-center">Les admins n'ont pas de profil à modifier.</div>;
+  if (role === 'admin_cfa' || role === 'super_admin') return <div className="min-h-screen p-6 text-center">Les admins n'ont pas de profil à modifier.</div>;
 
   return (
     <main className="p-6 pt-10 max-w-2xl mx-auto">

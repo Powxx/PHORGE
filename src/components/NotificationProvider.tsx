@@ -37,7 +37,7 @@ export default function NotificationProvider() {
 
       channel = supabase.channel('global_notifications');
 
-      if (profile.role === 'admin_cfa') {
+      if (profile.role === 'admin_cfa' || profile.role === 'super_admin') {
         // Admin: listen to new profiles that are not approved
         channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles', filter: 'is_approved=eq.false' }, (payload: any) => {
           notify("Nouveau compte à valider", "Un utilisateur s'est inscrit et attend validation.");

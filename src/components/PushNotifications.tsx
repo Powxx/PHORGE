@@ -211,7 +211,7 @@ export default function PushNotifications() {
               });
             }
 
-            if (roleRef.current === "admin_cfa") {
+            if (roleRef.current === "admin_cfa" || roleRef.current === "super_admin") {
               await showPushNotification("Nouveau match (CFA)", {
                 body: "Une nouvelle mise en relation a été créée.",
                 tag: `admin-match-${match.id}`,
@@ -230,7 +230,7 @@ export default function PushNotifications() {
             if (!uid || match.statut === old.statut) return;
 
             const isParticipant = match.apprenti_id === uid || match.patron_id === uid;
-            const isAdmin = roleRef.current === "admin_cfa";
+            const isAdmin = roleRef.current === "admin_cfa" || roleRef.current === "super_admin";
 
             if (match.statut === "essai_demande" && (isParticipant || isAdmin)) {
               await showPushNotification("Demande de période d'essai", {

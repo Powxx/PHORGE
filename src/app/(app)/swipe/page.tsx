@@ -43,7 +43,7 @@ export default function SwipePage() {
       const { data: profile } = await supabase.from('profiles').select('role, is_approved, school_id').eq('id', currentId).single();
       if (!profile) return;
 
-      if (profile.role === 'admin_cfa') {
+      if (profile.role === 'admin_cfa' || profile.role === 'super_admin') {
         router.push('/admin');
         return;
       }

@@ -10,7 +10,7 @@ import PWAInstallSection from '@/components/PWAInstallSection';
 
 export default function ProfilPage() {
   const [profileData, setProfileData] = useState<any>(null);
-  const [role, setRole] = useState<'apprenti'|'patron'|'admin_cfa'|null>(null);
+  const [role, setRole] = useState<'apprenti'|'patron'|'admin_cfa'|'super_admin'|null>(null);
   const [loading, setLoading] = useState(true);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const router = useRouter();
@@ -41,8 +41,8 @@ export default function ProfilPage() {
       } else if (prof.role === 'patron') {
         const { data } = await supabase.from('patrons_details').select('*').eq('profile_id', user.id).single();
         setProfileData(data);
-      } else if (prof.role === 'admin_cfa') {
-        setProfileData({ prenom: 'Administrateur·rice', nom: 'CFA', domaine: 'Supervision' });
+      } else if (prof.role === 'admin_cfa' || prof.role === 'super_admin') {
+        setProfileData({ prenom: prof.role === 'super_admin' ? 'Super' : 'Administrateur·rice', nom: prof.role === 'super_admin' ? 'Administrateur·rice' : 'CFA', domaine: 'Supervision Globale' });
       }
       setLoading(false);
     };
@@ -78,13 +78,14 @@ export default function ProfilPage() {
           </div>
           
           <h2 className="text-2xl font-black mb-1">
-            {role === 'apprenti' || role === 'admin_cfa' ? `${profileData?.prenom} ${profileData?.nom}` : profileData?.nom_entreprise}
+            {role === 'apprenti' || role === 'admin_cfa' || role === 'super_admin' ? `${profileData?.prenom} ${profileData?.nom}` : profileData?.nom_entreprise}
           </h2>
           <p className="text-[#D4AF37] font-semibold text-lg uppercase tracking-wider mb-8">
             {profileData?.domaine || (
               role === 'apprenti' ? 'Apprenti·e' :
               role === 'patron' ? 'Patron·ne' :
-              role === 'admin_cfa' ? 'Administrateur·rice CFA' : ''
+              role === 'admin_cfa' ? 'Administrateur·rice CFA' :
+              role === 'super_admin' ? 'Super Administrateur·rice' : ''
             )}
           </p>
 
@@ -106,12 +107,12 @@ export default function ProfilPage() {
                 <p className="flex flex-col sm:flex-row sm:gap-4"><span className="text-zinc-500 w-32 shrink-0">Distance Max</span> <strong className="break-words">{profileData?.distance_max} km</strong></p>
               </>
             )}
-            {role === 'admin_cfa' && (
+            {(role === 'admin_cfa' || role === 'super_admin') && (
               <p className="text-zinc-500 text-sm italic">Vous avez tous les droits sur la plateforme. Accédez à la Control Tower pour superviser les mises en relation.</p>
             )}
           </div>
 
-          {profileData && role !== 'admin_cfa' && profileData.latitude && profileData.longitude && (
+          {profileData && role !== 'admin_cfa' && role !== 'super_admin' && profileData.latitude && profileData.longitude && (
             <ProfileMap 
               latitude={profileData.latitude} 
               longitude={profileData.longitude} 

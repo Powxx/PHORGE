@@ -25,7 +25,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         .eq("id", user.id)
         .single();
 
-      if (profile?.role !== "admin_cfa") {
+      if (profile?.role !== "admin_cfa" && profile?.role !== "super_admin") {
         router.replace("/swipe");
         return;
       }

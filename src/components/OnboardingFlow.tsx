@@ -51,7 +51,7 @@ export default function OnboardingFlow() {
       if (data?.user) {
         setUserId(data.user.id);
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
-        if (profile?.role === 'admin_cfa') {
+        if (profile?.role === 'admin_cfa' || profile?.role === 'super_admin') {
           router.push('/admin');
         }
       }
