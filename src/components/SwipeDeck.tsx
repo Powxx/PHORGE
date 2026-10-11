@@ -50,7 +50,7 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
 
       if (matchCheck) {
         // IT'S A MATCH
-        const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', currentUserId).single();
+        const { data: myProfile } = await supabase.from('profiles').select('role, school_id').eq('id', currentUserId).single();
         const apprenti_id = myProfile?.role === 'apprenti' ? currentUserId : cardId;
         const patron_id = myProfile?.role === 'patron' ? currentUserId : cardId;
 
@@ -68,6 +68,51 @@ export default function SwipeDeck({ profiles, currentUserId }: { profiles: Profi
           });
 
           setMatchData({ id: newMatch.id, nom: swipedCard?.nom || "Nouveau Match" });
+
+          // Récupération du nom de l'utilisateur actuel pour la notification
+          let myName = "Quelqu'un";
+          if (myProfile?.role === 'apprenti') {
+            const { data: d } = await supabase.from('apprentis_details').select('prenom, nom').eq('profile_id', currentUserId).single();
+            if (d) myName = `${d.prenom} ${d.nom}`;
+          } else if (myProfile?.role === 'patron') {
+            const { data: d } = await supabase.from('patrons_details').select('nom_entreprise').eq('profile_id', currentUserId).single();
+            if (d) myName = d.nom_entreprise;
+          }
+
+          // Envoi de la notification push au partenaire de match
+          fetch('/api/push/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: cardId,
+              title: "C'est un Match ! 🎉",
+              body: `Vous avez matché avec ${myName} ! Allez vite échanger dans vos messages.`,
+              url: `/chat/${newMatch.id}`
+            })
+          }).catch(err => console.debug("Push notification error on match:", err));
+
+          // Envoi de la notification push aux administrateurs de l'école
+          if (myProfile?.school_id) {
+            supabase
+              .from('profiles')
+              .select('id')
+              .eq('school_id', myProfile.school_id)
+              .in('role', ['admin_cfa', 'super_admin'])
+              .then(({ data: admins }) => {
+                admins?.forEach(adm => {
+                  fetch('/api/push/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      userId: adm.id,
+                      title: "Nouveau Match (CFA) 🔔",
+                      body: `Une nouvelle mise en relation vient d'avoir lieu.`,
+                      url: "/admin"
+                    })
+                  }).catch(() => {});
+                });
+              });
+          }
         }
       }
     }

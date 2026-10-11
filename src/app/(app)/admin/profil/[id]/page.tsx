@@ -60,7 +60,21 @@ export default function AdminProfilPage() {
     setUpdating(true);
     const next = !isApproved;
     const { error } = await supabase.from('profiles').update({ is_approved: next }).eq('id', profileId);
-    if (!error) setIsApproved(next);
+    if (!error) {
+      setIsApproved(next);
+      if (next) {
+        fetch('/api/push/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: profileId,
+            title: "Compte Validé ! 🎉",
+            body: "Votre profil a été approuvé par l'administration. Vous pouvez maintenant accéder à l'ensemble de PHORGE !",
+            url: "/swipe"
+          })
+        }).catch(() => {});
+      }
+    }
     setUpdating(false);
   };
 

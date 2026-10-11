@@ -182,6 +182,28 @@ export default function OnboardingFlow() {
         if (apprentiError) throw apprentiError;
       }
 
+      if (selectedSchoolId) {
+        supabase
+          .from('profiles')
+          .select('id')
+          .eq('school_id', selectedSchoolId)
+          .in('role', ['admin_cfa', 'super_admin'])
+          .then(({ data: admins }) => {
+            admins?.forEach(adm => {
+              fetch('/api/push/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userId: adm.id,
+                  title: "Nouveau compte en attente 👤",
+                  body: `Un nouveau compte (${role === 'apprenti' ? 'Apprenti·e' : role === 'patron' ? 'Entreprise' : 'Membre'}) vient de s'inscrire et attend votre validation.`,
+                  url: "/admin"
+                })
+              }).catch(() => {});
+            });
+          });
+      }
+
       if (role === 'admin_cfa') {
         router.push('/admin');
       } else {

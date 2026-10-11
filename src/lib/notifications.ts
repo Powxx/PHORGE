@@ -1,5 +1,45 @@
 import { supabase } from '@/lib/supabase/client';
 
+export type NotificationPermissionState = NotificationPermission;
+
+/**
+ * Joue un carillon subtil et agréable via la Web Audio API (aucun fichier MP3 requis)
+ */
+export function playNotificationChime() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    
+    // Note 1 (D5 ~ 587.33 Hz)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start();
+    osc1.stop(ctx.currentTime + 0.35);
+
+    // Note 2 (A5 ~ 880 Hz) avec léger décalage
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+    gain2.gain.setValueAtTime(0.18, ctx.currentTime + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.12);
+    osc2.stop(ctx.currentTime + 0.55);
+  } catch (err) {
+    // AudioContext can fail if user hasn't interacted yet, silently ignore
+  }
+}
+
 export async function ensureNotificationPermission(): Promise<NotificationPermission> {
   if (typeof window === "undefined" || !("Notification" in window)) {
     return "denied";
@@ -8,7 +48,11 @@ export async function ensureNotificationPermission(): Promise<NotificationPermis
   if (Notification.permission === "granted") return "granted";
   if (Notification.permission === "denied") return "denied";
 
-  return Notification.requestPermission();
+  try {
+    return await Notification.requestPermission();
+  } catch {
+    return "denied";
+  }
 }
 
 export async function registerNotificationServiceWorker(): Promise<ServiceWorkerRegistration | null> {
@@ -33,8 +77,8 @@ export async function showPushNotification(
 
   const { url, ...notificationOptions } = options || {};
   const payload: NotificationOptions = {
-    icon: "/favicon.ico",
-    badge: "/favicon.ico",
+    icon: "/logo.png",
+    badge: "/logo.png",
     ...notificationOptions,
     data: { ...(notificationOptions.data || {}), url },
   };
@@ -49,13 +93,17 @@ export async function showPushNotification(
     // fall through to window Notification
   }
 
-  const notification = new Notification(title, payload);
-  if (url) {
-    notification.onclick = () => {
-      window.focus();
-      window.location.href = url;
-      notification.close();
-    };
+  try {
+    const notification = new Notification(title, payload);
+    if (url) {
+      notification.onclick = () => {
+        window.focus();
+        window.location.href = url;
+        notification.close();
+      };
+    }
+  } catch (err) {
+    console.error("Erreur lors de l'affichage de la notification locale:", err);
   }
 }
 
@@ -105,24 +153,23 @@ export async function subscribeUserToPush(): Promise<NotificationPermission> {
     }
 
     const subJson = subscription.toJSON();
-    console.log("[Push Registration] User ID:", user.id);
-    console.log("[Push Registration] Subscription payload:", subJson);
 
-    const { data: insertResult, error } = await supabase
+    // Enregistrement avec vérification d'existence pour éviter les erreurs de doublons
+    const { data: existing } = await supabase
       .from("user_push_subscriptions")
-      .insert({
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1);
+
+    const { error } = await supabase
+      .from("user_push_subscriptions")
+      .upsert({
         user_id: user.id,
         subscription: subJson,
-      })
-      .select();
-    
-    if (error) {
-      console.error("[Push Registration] DB insert error:", error);
-      if (error.code !== "23505" && error.code !== "P0001") {
-        throw new Error(`Échec de la sauvegarde de l'abonnement en base de données : ${error.message}`);
-      }
-    } else {
-      console.log("[Push Registration] DB insert success. Result:", insertResult);
+      }, { onConflict: 'user_id, subscription' });
+
+    if (error && error.code !== "23505" && error.code !== "P0001") {
+      console.warn("[Push Registration] DB upsert warning:", error);
     }
   } catch (error: any) {
     console.error("[Push Registration] Registration failed:", error);
@@ -130,4 +177,32 @@ export async function subscribeUserToPush(): Promise<NotificationPermission> {
   }
 
   return permission;
+}
+
+/**
+ * Envoie une notification push serveur à un utilisateur via /api/push/notify
+ */
+export async function sendPushNotification({
+  userId,
+  title,
+  body,
+  url
+}: {
+  userId: string;
+  title: string;
+  body: string;
+  url?: string;
+}): Promise<{ success: boolean; sent?: number; error?: string }> {
+  try {
+    const res = await fetch('/api/push/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, title, body, url })
+    });
+    const data = await res.json();
+    return { success: res.ok, sent: data.sent, error: data.error };
+  } catch (err: any) {
+    console.error("sendPushNotification error:", err);
+    return { success: false, error: err.message };
+  }
 }

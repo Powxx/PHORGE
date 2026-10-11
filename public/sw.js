@@ -14,7 +14,9 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
         if ("focus" in client) {
-          client.navigate?.(url);
+          if ("navigate" in client) {
+            client.navigate(url);
+          }
           return client.focus();
         }
       }
@@ -28,30 +30,30 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("push", (event) => {
   let data = { title: "PHORGE", body: "Nouvelle notification", url: "/messages" };
   try {
-    if (event.data) data = { ...data, ...event.data.json() };
-  } catch {
-    // ignore malformed payload
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch (err) {
+    if (event.data) {
+      data.body = event.data.text();
+    }
   }
 
-  event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      // Don't show push notification if the user is already focused on the target chat URL
-      const isFocusedOnTarget = clients.some(client =>
-        client.focused && new URL(client.url).pathname === data.url
-      );
-      if (isFocusedOnTarget) {
-        return;
-      }
+  const notificationOptions = {
+    body: data.body,
+    icon: "/logo.png",
+    badge: "/logo.png",
+    vibrate: [200, 100, 200],
+    tag: data.url || "phorge-notification",
+    renotify: true,
+    data: { url: data.url },
+    actions: [
+      { action: "open", title: "Voir" }
+    ]
+  };
 
-      return self.registration.showNotification(data.title, {
-        body: data.body,
-        icon: "/logo.png",
-        badge: "/logo.png",
-        vibrate: [200, 100, 200],
-        tag: data.url, // Collapses multiple notifications from the same chat
-        renotify: true,
-        data: { url: data.url },
-      });
-    })
+  event.waitUntil(
+    self.registration.showNotification(data.title, notificationOptions)
   );
 });
